@@ -37,7 +37,25 @@ uint32_t *insts_emit(unsigned *nbytes, char *insts) {
  */
 void insts_check(char *insts, uint32_t *code, unsigned nbytes) {
     // make sure you print out something useful on mismatch!
-    unimplemented();
+    assert(nbytes % 4 == 0);
+    unsigned nbytes_cmp;
+
+    uint32_t *code_cmp = insts_emit(&nbytes_cmp, insts);
+
+    assert(nbytes == nbytes_cmp);
+
+    unsigned ninst = nbytes / 4;
+
+    for (unsigned i = 0; i < ninst; i++) {
+        // little endian
+        uint32_t inst = 0;
+        for (unsigned j = 0; j < 4; j++) {
+            inst |= code_cmp[i + j] << 8*j;
+        }        
+
+        demand(code[i] == inst, "code[i]=%x (expected) but inst=%x (generated)", code[i], inst);
+
+    }
 }
 
 // check a single instruction.
