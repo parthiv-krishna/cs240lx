@@ -202,7 +202,7 @@ int main(void) {
     check_one_inst("add r0, r0, r1", 0xe0800001);
     check_one_inst("bx lr", 0xe12fff1e);
     check_one_inst("mov r0, #1", 0xe3a00001);
-    check_one_inst("nop", 0xe320f000);
+    check_one_inst("nop", 0xe1a00000);
     output("success!\n");
 
     // part 3: check that you can correctly encode an add instruction.
