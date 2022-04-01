@@ -6,6 +6,8 @@
 #include "code-gen.h"
 #include "armv6-insts.h"
 
+#define TEMP_FILENAME "temp"
+
 /*
  *  1. emits <insts> into a temporary file.
  *  2. compiles it.
@@ -14,7 +16,16 @@
  */
 uint32_t *insts_emit(unsigned *nbytes, char *insts) {
     // check libunix.h --- create_file, write_exact, run_system, read_file.
-    unimplemented();
+    int fd = create_file(TEMP_FILENAME ".S");
+
+    write_exact(fd, insts, strlen(insts));
+
+    // assemble
+    run_system("arm-none-eabi-gcc -c %s -o %s", TEMP_FILENAME ".S", TEMP_FILENAME ".o");
+    // objdump
+    run_system("arm-none-eabi-objcopy %s -O binary %s", TEMP_FILENAME ".o", TEMP_FILENAME ".bin");
+
+    return (uint32_t *)read_file(nbytes, TEMP_FILENAME ".bin");
 }
 
 /*
