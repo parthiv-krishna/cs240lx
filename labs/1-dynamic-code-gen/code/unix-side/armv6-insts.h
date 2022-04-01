@@ -82,6 +82,19 @@ _Static_assert(arm_mvn_op == 0b1111, "bad num list");
  *      call
  */
 
+// armv6.pdf page A5-3
+typedef struct {
+    uint32_t shift_or_Rm:12,    // 0-11
+             Rd:4,              // 12-15
+             Rn:4,              // 16-19
+             S:1,               // 20
+             opcode:4,          // 21-24
+             I:1,               // 25
+             sbz:2,             // 26-27
+             cond:4;            // 28-31
+} arm_dataproc_t;
+_Static_assert(sizeof(arm_dataproc_t) == sizeof(uint32_t), "arm_dataproc_t wrong size");
+
 // add instruction:
 //      add rdst, rs1, rs2
 //  - general add instruction: page A4-6 [armv6.pdf]
@@ -90,7 +103,19 @@ _Static_assert(arm_mvn_op == 0b1111, "bad num list");
 // we do not do any carries, so S = 0.
 static inline unsigned arm_add(uint8_t rd, uint8_t rs1, uint8_t rs2) {
     assert(arm_add_op == 0b0100);
-    unimplemented();
+    
+    // armv6.pdf page A5-3
+    arm_dataproc_t inst;
+    inst.cond = arm_AL;
+    inst.sbz = 0;
+    inst.I = 0;
+    inst.opcode = arm_add_op;
+    inst.S = 0;
+    inst.Rn = rs1;
+    inst.Rd = rd;
+    inst.shift_or_Rm = rs2;
+
+    return *(unsigned *)&inst;
 }
 
 // <add> of an immediate
