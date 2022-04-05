@@ -6,6 +6,14 @@
 #include "code-gen.h"
 #include "armv6-insts.h"
 
+#define TEMP_FILENAME "temp"
+
+const char *all_regs[] = {
+            "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
+            "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
+            0 
+};
+
 /*
  *  1. emits <insts> into a temporary file.
  *  2. compiles it.
@@ -14,7 +22,16 @@
  */
 uint32_t *insts_emit(unsigned *nbytes, char *insts) {
     // check libunix.h --- create_file, write_exact, run_system, read_file.
-    unimplemented();
+    int fd = create_file(TEMP_FILENAME ".S");
+
+    write_exact(fd, insts, strlen(insts));
+
+    // assemble
+    run_system("arm-none-eabi-gcc -c %s -o %s", TEMP_FILENAME ".S", TEMP_FILENAME ".o");
+    // objdump
+    run_system("arm-none-eabi-objcopy %s -O binary %s", TEMP_FILENAME ".o", TEMP_FILENAME ".bin");
+
+    return (uint32_t *)read_file(nbytes, TEMP_FILENAME ".bin");
 }
 
 /*
@@ -26,7 +43,25 @@ uint32_t *insts_emit(unsigned *nbytes, char *insts) {
  */
 void insts_check(char *insts, uint32_t *code, unsigned nbytes) {
     // make sure you print out something useful on mismatch!
-    unimplemented();
+    assert(nbytes % 4 == 0);
+    unsigned nbytes_cmp;
+
+    uint32_t *code_cmp = insts_emit(&nbytes_cmp, insts);
+
+    assert(nbytes == nbytes_cmp);
+
+    unsigned ninst = nbytes / 4;
+
+    for (unsigned i = 0; i < ninst; i++) {
+        // little endian
+        uint32_t inst = 0;
+        for (unsigned j = 0; j < 4; j++) {
+            inst |= code_cmp[i + j] << 8*j;
+        }        
+
+        demand(code[i] == inst, "code[i]=%x (expected) but inst=%x (generated)", code[i], inst);
+
+    }
 }
 
 // check a single instruction.
@@ -51,14 +86,52 @@ void insts_print(char *insts) {
 
 // helper function for reverse engineering.  you should refactor its interface
 // so your code is better.
-uint32_t emit_rrr(const char *op, const char *d, const char *s1, const char *s2) {
+uint32_t emit_rrr(const char *op, const char *fmt, const char *reg, uint32_t *always_0, uint32_t *always_1) {
     char buf[1024];
-    sprintf(buf, "%s %s, %s, %s", op, d, s1, s2);
+
+    sprintf(buf, fmt, op, reg);
 
     uint32_t n;
     uint32_t *c = insts_emit(&n, buf);
     assert(n == 4);
+
+    // printf("%x %s %s\n", *c, op, fmt);
+
     return *c;
+}
+
+// solves for offset of a given register
+int solve_reg(const char *op, const char *fmt, uint32_t *always_0, uint32_t *always_1) {
+    uint32_t my_always_0 = ~0;
+    uint32_t my_always_1 = ~0;
+
+    for(unsigned i = 0; all_regs[i]; i++) {
+        uint32_t inst = emit_rrr(op, fmt, all_regs[i], &my_always_0, &my_always_1);
+
+        my_always_0 &= ~inst;
+        my_always_1 &= inst;
+    }
+
+
+    if(my_always_0 & my_always_1) 
+        panic("impossible overlap: always_0 = %x, always_1 %x\n", 
+            my_always_0, my_always_1);
+
+    // bits that never changed
+    uint32_t never_changed = my_always_0 | my_always_1;
+    // bits that changed: these are the register bits.
+    uint32_t changed = ~never_changed;
+
+    int off = ffs(changed) - 1; // ffs is 1-indexed
+
+    // check that bits are contig and at most 4 bits are set.
+    if(((changed >> off) & ~0xf) != 0)
+        panic("weird instruction!  expecting at most 4 contig bits: %x\n", changed);
+
+    *always_0 &= my_always_0;
+    *always_1 &= my_always_1;
+
+    return off; 
 }
 
 // overly-specific.  some assumptions:
@@ -75,54 +148,36 @@ uint32_t emit_rrr(const char *op, const char *d, const char *s1, const char *s2)
 //  4. emit code to check that the derived encoding is correct.
 //  5. emit if statements to checks for illegal registers (those not in <src1>,
 //    <src2>, <dst>).
-void derive_op_rrr(const char *name, const char *opcode, 
-        const char **dst, const char **src1, const char **src2) {
+void derive_op_rrr(const char *name, const char *opcode) {
 
-    const char *s1 = src1[0];
-    const char *s2 = src2[0];
-    const char *d = dst[0];
-    assert(d && s1 && s2);
+    const char *first = all_regs[0];
 
     unsigned d_off = 0, src1_off = 0, src2_off = 0, op = ~0;
 
     uint32_t always_0 = ~0, always_1 = ~0;
 
-    // compute any bits that changed as we vary d.
-    for(unsigned i = 0; dst[i]; i++) {
-        uint32_t u = emit_rrr(opcode, dst[i], s1, s2);
+    // find the offset.  we assume register bits are contig and within 0xf
+    char fmt[64];
+    snprintf(fmt, sizeof(fmt), "%%s %s, %s, %s", "%s", first, first);
+    d_off = solve_reg(opcode, fmt, &always_0, &always_1);
+    snprintf(fmt, sizeof(fmt), "%%s %s, %s, %s", first, "%s", first);
+    src1_off = solve_reg(opcode, fmt, &always_0, &always_1);
+    snprintf(fmt, sizeof(fmt), "%%s %s, %s, %s", first, first, "%s");
+    src2_off = solve_reg(opcode, fmt, &always_0, &always_1);
 
-        // if a bit is always 0 then it will be 1 in always_0
-        always_0 &= ~u;
-
-        // if a bit is always 1 it will be 1 in always_1, otherwise 0
-        always_1 &= u;
-    }
-
-    if(always_0 & always_1) 
-        panic("impossible overlap: always_0 = %x, always_1 %x\n", 
-            always_0, always_1);
-
-    // bits that never changed
     uint32_t never_changed = always_0 | always_1;
-    // bits that changed: these are the register bits.
     uint32_t changed = ~never_changed;
 
     output("register dst are bits set in: %x\n", changed);
-
-    // find the offset.  we assume register bits are contig and within 0xf
-    d_off = ffs(changed);
     
-    // check that bits are contig and at most 4 bits are set.
-    if(((changed >> d_off) & ~0xf) != 0)
-        panic("weird instruction!  expecting at most 4 contig bits: %x\n", changed);
     // refine the opcode.
-    op &= never_changed;
+    op &= always_1;
     output("opcode is in =%x\n", op);
 
     // emit: NOTE: obviously, currently <src1_off>, <src2_off> are not 
     // defined (so solve for them) and opcode needs to be refined more.
     output("static int %s(uint32_t dst, uint32_t src1, uint32_t src2) {\n", name);
-    output("    return %x | (dst << %d) | (src1 << %d) | (src2 << %d)\n",
+    output("    return 0x%x | (dst << %d) | (src1 << %d) | (src2 << %d);\n",
                 op,
                 d_off,
                 src1_off,
@@ -173,7 +228,7 @@ int main(void) {
     check_one_inst("add r0, r0, r1", 0xe0800001);
     check_one_inst("bx lr", 0xe12fff1e);
     check_one_inst("mov r0, #1", 0xe3a00001);
-    check_one_inst("nop", 0xe320f000);
+    check_one_inst("nop", 0xe1a00000);
     output("success!\n");
 
     // part 3: check that you can correctly encode an add instruction.
@@ -191,15 +246,14 @@ int main(void) {
     output("\n-----------------------------------------\n");
     output("part4: checking that we can reverse engineer an <add>\n");
 
-    const char *all_regs[] = {
-                "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7",
-                "r8", "r9", "r10", "r11", "r12", "r13", "r14", "r15",
-                0 
-    };
     // XXX: should probably pass a bitmask in instead.
-    derive_op_rrr("arm_add", "add", all_regs,all_regs,all_regs);
+    derive_op_rrr("arm_add", "add");
     output("did something: now use the generated code in the checks above!\n");
 
     // get encodings for other instructions, loads, stores, branches, etc.
+    // XXX: should probably pass a bitmask in instead.
+    printf("decoding sub:\n");
+    derive_op_rrr("arm_sub", "sub");
+
     return 0;
 }
