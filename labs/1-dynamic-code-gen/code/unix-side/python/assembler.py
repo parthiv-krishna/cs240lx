@@ -1,6 +1,7 @@
 import abc
 import subprocess
 import os
+import sys
 
 class Assembler(abc.ABC):
     """Abstract base class representing an assembler."""
@@ -76,11 +77,16 @@ class ArmNoneEabiAssembler(Assembler):
         with open(self.asm_file, "w+") as f:
             f.write(instruction + "\n")
 
+        
         # Assemble the file
-        subprocess.check_call(["arm-none-eabi-gcc", "-c", self.asm_file, "-o", self.obj_file])
+        retcode = subprocess.call(["arm-none-eabi-gcc", "-c", self.asm_file, "-o", self.obj_file])
+        if retcode != 0:
+            raise RuntimeError(f"Error assembling instruction: `{instruction}`")
 
         # Link the object file into a binary
-        subprocess.check_call(["arm-none-eabi-objcopy", self.obj_file, "-O", "binary", self.bin_file])
+        retcode = subprocess.call(["arm-none-eabi-objcopy", self.obj_file, "-O", "binary", self.bin_file])
+        if retcode != 0:
+            raise RuntimeError(f"Error objcopying: `{self.obj_file}`")
 
         # Read the binary
         with open(self.bin_file, "rb") as f:

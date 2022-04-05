@@ -32,6 +32,11 @@ def solve_instruction(asm, instr_name, template, arg_names, options, regex):
     if len(matches) != len(arg_names):
         raise RuntimeError(f"Template `{template}` has {len(matches)} arguments but there are {len(arg_names)} arg names: {arg_names}.")
 
+    if len(matches) == 0:
+        # no arguments
+        instr = asm.assemble(template)
+        instr_unchanged = instr
+
     # iterate through each matched location in the template
     for match, arg_name in zip(matches, arg_names):
 
@@ -77,6 +82,23 @@ def solve_instruction(asm, instr_name, template, arg_names, options, regex):
     opcode = bitwise.AND(instr_unchanged, instr)
     return Instruction(asm.arch(), instr_name, opcode, args)
 
+def test_instruction(asm, instr, args, assembly):
+    """Tests a single instruction's solved encoding against the expected encoding.
+
+    Args:
+        asm (Assembler): The assembler to use.
+        instr (Instruction): The instruction to test. 
+        args (list): The arguments to use in the instruction.
+        assembly (str): The assembly to use as ground truth.
+
+    Raises:
+        RuntimeError: _description_
+    """
+    actual = instr.assemble(args)
+    expected = bitwise.to_int(asm.assemble(assembly))
+    if actual != expected:
+        raise RuntimeError(f"{assembly} failed: Got {actual:x} but expected {expected:x}")
+
 def main():
     # Assembler object that gives .assemble and .cleanup methods
     asm = config.asm
@@ -101,11 +123,11 @@ def main():
 
     # Test instructions
     print(f"Running test cases")
-    for instr_name, args, expected in test_cases:
-        instr = solved[instr_name]
-        actual = instr.assemble(args)
-        if actual != expected:
-            raise RuntimeError(f"{instr_name} failed: Got {actual:x} but expected {expected:x}")
+    for instr_name, args, assembly in test_cases:
+        if instr_name not in solved:
+            raise RuntimeError(f"{instr_name} not found in solved instructions")
+        test_instruction(asm, solved[instr_name], args, assembly)
+
     print(f"Successfully ran {len(test_cases)} test cases")
 
     # Write output
