@@ -1,10 +1,9 @@
-import arm_none_eabi_config as config
-# e.g. import risc_v_config as config ??
+import importlib
+import re
+import argparse
 
 import bitwise
 from instruction import Instruction
-
-import re
 
 def solve_instruction(asm, instr_name, template, arg_names, options, regex):
     """Solves a template and prints the resulting assembly.
@@ -99,7 +98,7 @@ def test_instruction(asm, instr, args, assembly):
     if actual != expected:
         raise RuntimeError(f"{assembly} failed: Got {actual:x} but expected {expected:x}")
 
-def main():
+def main(config):
     # Assembler object that gives .assemble and .cleanup methods
     asm = config.asm
     # List of (instr_name, template, list of argument names)
@@ -140,4 +139,10 @@ def main():
     asm.cleanup()
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser(description="Derive assembly instructions.")
+    parser.add_argument("config", help="The configuration python file to use (without .py).")
+    args = parser.parse_args()
+
+    config = importlib.import_module(args.config)
+
+    main(config)
