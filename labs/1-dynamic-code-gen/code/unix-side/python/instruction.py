@@ -34,7 +34,7 @@ class Instruction():
 
         result += f"    return 0x{bitwise.to_hex(self.opcode)}"
         for i, arg in enumerate(self.args):
-            result += f" |\n    ({arg} << {self.args[arg]})"
+            result += f" |\n           ({arg} << {self.args[arg]})"
         
         result += ";\n}"
 

@@ -6,7 +6,8 @@ asm = ArmNoneEabiAssembler({"memmap": "memmap",
 templates = {
     "add @r, @r, @r": ["dst", "src1", "src2"],
     "sub @r, @r, @r": ["dst", "src1", "src2"],
-    "mov @r, @r" : ["dst", "src"]
+    "mov @r, @r" : ["dst", "src"],
+    "ldr @r, [@r]" : ["dst", "addr"]
 }
 
 options = {
