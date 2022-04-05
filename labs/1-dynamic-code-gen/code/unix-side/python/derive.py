@@ -6,12 +6,14 @@ import instruction
 
 import re
 
-def solve_instruction(asm, template, names, options, regex):
+def solve_instruction(asm, instr_name, template, arg_names, options, regex):
     """Solves a template and prints the resulting assembly.
     
     Args:
         asm (Assembler): The assembler to use.
+        instr_name (str): The name of the instruction.
         template (str): The template to solve.
+        arg_names (list(str)): The names of the arguments specified in the template.
         options (dict): The options to choose from for the template arguments.
         regex (str): The regular expression to use to match the template arguments.
 
@@ -27,11 +29,11 @@ def solve_instruction(asm, template, names, options, regex):
     # dictionary mapping {argname: offset}
     args = {}
 
-    if len(matches) != len(names):
-        raise RuntimeError(f"Template `{template}` has {len(matches)} arguments but {len(names)} names, {names}.")
+    if len(matches) != len(arg_names):
+        raise RuntimeError(f"Template `{template}` has {len(matches)} arguments but there are {len(arg_names)} arg names: {arg_names}.")
 
     # iterate through each matched location in the template
-    for match, name in zip(matches, names):
+    for match, arg_name in zip(matches, arg_names):
 
         # for the current location
         always_0 = None
@@ -65,27 +67,26 @@ def solve_instruction(asm, template, names, options, regex):
 
         unchanged = bitwise.OR(always_0, always_1) # should be the instruction encoding
         my_bits = bitwise.NOT(unchanged)
-        args[name] = bitwise.FFS(my_bits) # assumes contiguous fields...
+        args[arg_name] = bitwise.FFS(my_bits) # assumes contiguous fields...
 
 
         instr_unchanged = bitwise.AND(instr_unchanged, unchanged) # update opcode bits
 
-    name = template.split(' ')[0] # op name is first word in assembly template
     opcode = bitwise.AND(instr_unchanged, instr)
-    return instruction.Instruction(asm.arch(), name, opcode, args)
+    return instruction.Instruction(asm.arch(), instr_name, opcode, args)
 
 def main():
     # Assembler object that gives .assemble and .cleanup methods
     asm = config.asm
-    # Dictionary of {assembly template: list of argument names}
+    # List of (name, template, list of argument names)
     templates = config.templates
     # Dictionary of {argument: list of possible values}
     options = config.options
     # Regular expression to match arguments in templates
     regex = config.regex
 
-    for template, names in templates.items():
-        solved = solve_instruction(asm, template, names, options, regex)
+    for instr_name, template, arg_names in templates:
+        solved = solve_instruction(asm, instr_name, template, arg_names, options, regex)
         print(solved.to_c_function())
 
 
