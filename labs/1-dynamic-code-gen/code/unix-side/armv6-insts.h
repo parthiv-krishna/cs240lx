@@ -112,21 +112,25 @@ _Static_assert(sizeof(arm_bx_t) == sizeof(uint32_t), "arm_bx_t wrong size");
 //  - shift operatnd: page A5-8 [armv6.pdf]
 //
 // we do not do any carries, so S = 0.
-static inline unsigned arm_add(uint8_t rd, uint8_t rs1, uint8_t rs2) {
-    assert(arm_add_op == 0b0100);
+// static inline unsigned arm_add(uint8_t rd, uint8_t rs1, uint8_t rs2) {
+//     assert(arm_add_op == 0b0100);
     
-    // armv6.pdf page A5-3
-    arm_dataproc_t inst;
-    inst.cond = arm_AL;
-    inst.sbz = 0;
-    inst.I = 0;
-    inst.opcode = arm_add_op;
-    inst.S = 0;
-    inst.Rn = rs1;
-    inst.Rd = rd;
-    inst.imm_or_Rm = rs2;
+//     // armv6.pdf page A5-3
+//     arm_dataproc_t inst;
+//     inst.cond = arm_AL;
+//     inst.sbz = 0;
+//     inst.I = 0;
+//     inst.opcode = arm_add_op;
+//     inst.S = 0;
+//     inst.Rn = rs1;
+//     inst.Rd = rd;
+//     inst.imm_or_Rm = rs2;
 
-    return *(unsigned *)&inst;
+//     return *(unsigned *)&inst;
+// }
+// generated
+static int arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
+    return 0xe0800000 | (dst << 12) | (src1 << 16) | (src2 << 0);
 }
 
 // <add> of an immediate

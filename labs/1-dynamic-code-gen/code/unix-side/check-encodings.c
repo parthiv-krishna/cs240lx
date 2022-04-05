@@ -95,7 +95,7 @@ uint32_t emit_rrr(const char *op, const char *fmt, const char *reg, uint32_t *al
     uint32_t *c = insts_emit(&n, buf);
     assert(n == 4);
 
-    printf("%x %s %s\n", *c, op, fmt);
+    // printf("%x %s %s\n", *c, op, fmt);
 
     return *c;
 }
@@ -177,7 +177,7 @@ void derive_op_rrr(const char *name, const char *opcode) {
     // emit: NOTE: obviously, currently <src1_off>, <src2_off> are not 
     // defined (so solve for them) and opcode needs to be refined more.
     output("static int %s(uint32_t dst, uint32_t src1, uint32_t src2) {\n", name);
-    output("    return 0x%x | (dst << %d) | (src1 << %d) | (src2 << %d)\n",
+    output("    return 0x%x | (dst << %d) | (src1 << %d) | (src2 << %d);\n",
                 op,
                 d_off,
                 src1_off,
@@ -251,5 +251,9 @@ int main(void) {
     output("did something: now use the generated code in the checks above!\n");
 
     // get encodings for other instructions, loads, stores, branches, etc.
+    // XXX: should probably pass a bitmask in instead.
+    printf("decoding sub:\n");
+    derive_op_rrr("arm_sub", "sub");
+
     return 0;
 }
