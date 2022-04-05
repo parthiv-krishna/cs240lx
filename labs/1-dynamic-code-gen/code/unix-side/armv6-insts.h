@@ -128,9 +128,18 @@ _Static_assert(sizeof(arm_bx_t) == sizeof(uint32_t), "arm_bx_t wrong size");
 
 //     return *(unsigned *)&inst;
 // }
-// generated
-static int arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
-    return 0xe0800000 | (dst << 12) | (src1 << 16) | (src2 << 0);
+
+// c generated
+// static int arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
+//     return 0xe0800000 | (dst << 12) | (src1 << 16) | (src2 << 0);
+// }
+
+// python generated
+static uint32_t arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
+    return 0xe0800000 |
+           (dst << 12) |
+           (src1 << 16) |
+           (src2 << 0);
 }
 
 // <add> of an immediate
