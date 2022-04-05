@@ -6,12 +6,6 @@ from assembler import Assembler
 class ArmNoneEabiAssembler(Assembler):
     """arm-none-eabi assembler (for r/pi)"""
 
-    memmap = None
-    asm_file = None
-    obj_file = None
-    bin_file = None
-
-
     def __init__(self, config_dict):
         """Sets up an instance of an ArmNoneEabiAssembler.
         

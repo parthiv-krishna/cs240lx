@@ -2,10 +2,6 @@ import bitwise
 
 class Instruction():
     """Class representing an instruction"""
-    arch = None
-    name = None
-    args = None
-    opcode = None
 
     def __init__(self, arch, name, opcode, args):
         """Initializes the Instruction.
