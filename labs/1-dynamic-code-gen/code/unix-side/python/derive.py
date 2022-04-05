@@ -2,7 +2,7 @@ import arm_none_eabi_config as config
 # e.g. import risc_v_config as config ??
 
 import bitwise
-import instruction
+from instruction import Instruction
 
 import re
 
@@ -68,27 +68,52 @@ def solve_instruction(asm, instr_name, template, arg_names, options, regex):
         unchanged = bitwise.OR(always_0, always_1) # should be the instruction encoding
         my_bits = bitwise.NOT(unchanged)
         args[arg_name] = bitwise.FFS(my_bits) # assumes contiguous fields...
+        if args[arg_name] == -1:
+            raise RuntimeError(f"Impossible, my_bits is all 0s")
 
 
         instr_unchanged = bitwise.AND(instr_unchanged, unchanged) # update opcode bits
 
     opcode = bitwise.AND(instr_unchanged, instr)
-    return instruction.Instruction(asm.arch(), instr_name, opcode, args)
+    return Instruction(asm.arch(), instr_name, opcode, args)
 
 def main():
     # Assembler object that gives .assemble and .cleanup methods
     asm = config.asm
-    # List of (name, template, list of argument names)
+    # List of (instr_name, template, list of argument names)
     templates = config.templates
     # Dictionary of {argument: list of possible values}
     options = config.options
     # Regular expression to match arguments in templates
     regex = config.regex
+    # Output header file
+    output_file = config.output_file
+    # List of (instr_name, arguments, expected encoding)
+    test_cases = config.test_cases
 
+    # {instr_name: Instruction}
+    solved = {}
+
+    # Solve instructions
     for instr_name, template, arg_names in templates:
-        solved = solve_instruction(asm, instr_name, template, arg_names, options, regex)
-        print(solved.to_c_function())
+        print(f"Solving {instr_name}")
+        solved[instr_name] = solve_instruction(asm, instr_name, template, arg_names, options, regex)
 
+    # Test instructions
+    print(f"Running test cases")
+    for instr_name, args, expected in test_cases:
+        instr = solved[instr_name]
+        actual = instr.assemble(args)
+        if actual != expected:
+            raise RuntimeError(f"{instr_name} failed: Got {actual:x} but expected {expected:x}")
+    print(f"Successfully ran {len(test_cases)} test cases")
+
+    # Write output
+    with open(output_file, "w") as f:
+        for instr in solved.values():
+            f.write(instr.to_c_function())
+            f.write("\n\n")
+    print(f"Wrote {len(solved)} instructions to {output_file}")
 
     asm.cleanup()
 

@@ -21,6 +21,28 @@ class Instruction():
         self.opcode = opcode
         self.args = args
 
+    def assemble(self, args):
+        """Assembles the instruction with the given arguments.
+
+        Args:
+            args (list(int)): The arguments in the same order they are presented in the template.
+
+        Raises:
+            RuntimeError: Mismatch between the number of arguments and the number of arguments in the template.
+
+        Returns:
+            int: Instruction encoding
+        """
+
+        if(len(args) != len(self.args)):
+            raise RuntimeError(f"Expected {len(self.args)} arguments but got {len(args)}.")
+        
+        result = bitwise.to_int(self.opcode)
+        for i, (arg, offset) in enumerate(self.args.items()):
+                result = result | (args[i] << offset)
+
+        return result
+
 
     def to_c_function(self):
         result = f"static uint32_t {self.arch}_{self.name}("
