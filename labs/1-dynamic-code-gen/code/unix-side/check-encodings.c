@@ -27,7 +27,7 @@ uint32_t *insts_emit(unsigned *nbytes, char *insts) {
     write_exact(fd, insts, strlen(insts));
 
     // assemble
-    run_system("arm-none-eabi-gcc -c %s -o %s", TEMP_FILENAME ".S", TEMP_FILENAME ".o");
+    run_system("arm-none-eabi-as -mcpu=arm1176jzf-s -march=armv6zk %s -o %s", TEMP_FILENAME ".S", TEMP_FILENAME ".o");
     // objdump
     run_system("arm-none-eabi-objcopy %s -O binary %s", TEMP_FILENAME ".o", TEMP_FILENAME ".bin");
 
@@ -228,7 +228,7 @@ int main(void) {
     check_one_inst("add r0, r0, r1", 0xe0800001);
     check_one_inst("bx lr", 0xe12fff1e);
     check_one_inst("mov r0, #1", 0xe3a00001);
-    check_one_inst("nop", 0xe1a00000);
+    check_one_inst("nop", 0xe320f000);
     output("success!\n");
 
     // part 3: check that you can correctly encode an add instruction.
@@ -255,5 +255,11 @@ int main(void) {
     printf("decoding sub:\n");
     derive_op_rrr("arm_sub", "sub");
 
+    check_one_inst("bx r0", arm_bx(0));
+    check_one_inst("blx r0", arm_blx(0));
+
+    check_one_inst("ldr r0, [pc,#0]", arm_ldr_imm_off(arm_r0, arm_r15, 0));
+    check_one_inst("ldr r0, [pc,#240]", arm_ldr_imm_off(arm_r0, arm_r15, 240));
+    printf("success\n");
     return 0;
 }
