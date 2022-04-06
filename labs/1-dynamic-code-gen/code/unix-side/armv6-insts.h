@@ -135,48 +135,145 @@ _Static_assert(sizeof(arm_bx_t) == sizeof(uint32_t), "arm_bx_t wrong size");
 // }
 
 // python generated
-static uint32_t arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
+// static uint32_t arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
+//     return 0xe0800000 |
+//            (dst << 12) |
+//            (src1 << 16) |
+//            (src2 << 0);
+// }
+
+// // <add> of an immediate
+// static inline uint32_t arm_add_imm8(uint8_t rd, uint8_t rs1, uint8_t imm) {
+//     assert(arm_add_op == 0b0100);
+    
+//     // armv6.pdf page A5-3
+//     arm_dataproc_t inst;
+//     inst.cond = arm_AL;
+//     inst.sbz = 0;
+//     inst.I = 1;
+//     inst.opcode = arm_add_op;
+//     inst.S = 0;
+//     inst.Rn = rs1;
+//     inst.Rd = rd;
+//     inst.imm_or_Rm = imm;
+
+//     return *(unsigned *)&inst;
+// }
+
+    // static inline uint32_t arm_bx(uint8_t reg) {
+        
+    //     // armv6.pdf page A4-20
+    //     arm_bx_t inst;
+    //     inst.cond = arm_AL;
+    //     inst.bx_opcode = 0b00010010;
+    //     inst.sbo = 0xFFF;
+    //     inst.one = 1;
+    //     inst.Rm = reg;
+
+    //     return *(unsigned *)&inst;
+    // }
+
+// load an or immediate and rotate it.
+// static inline uint32_t 
+// arm_or_imm_rot(uint8_t rd, uint8_t rs1, uint8_t imm8, uint8_t rot_nbits) {
+//     unimplemented();
+// }
+
+
+static inline uint32_t arm_add(uint32_t dst, uint32_t src1, uint32_t src2) {
     return 0xe0800000 |
            (dst << 12) |
            (src1 << 16) |
            (src2 << 0);
 }
 
-// <add> of an immediate
-static inline uint32_t arm_add_imm8(uint8_t rd, uint8_t rs1, uint8_t imm) {
-    assert(arm_add_op == 0b0100);
-    
-    // armv6.pdf page A5-3
-    arm_dataproc_t inst;
-    inst.cond = arm_AL;
-    inst.sbz = 0;
-    inst.I = 1;
-    inst.opcode = arm_add_op;
-    inst.S = 0;
-    inst.Rn = rs1;
-    inst.Rd = rd;
-    inst.imm_or_Rm = imm;
-
-    return *(unsigned *)&inst;
+static inline uint32_t arm_add_imm(uint32_t dst, uint32_t src, uint32_t imm) {
+    return 0xe2800000 |
+           (dst << 12) |
+           (src << 16) |
+           (imm << 0);
 }
 
-static inline uint32_t arm_bx(uint8_t reg) {
-    
-    // armv6.pdf page A4-20
-    arm_bx_t inst;
-    inst.cond = arm_AL;
-    inst.bx_opcode = 0b00010010;
-    inst.sbo = 0xFFF;
-    inst.one = 1;
-    inst.Rm = reg;
-
-    return *(unsigned *)&inst;
+static inline uint32_t arm_sub(uint32_t dst, uint32_t src1, uint32_t src2) {
+    return 0xe0400000 |
+           (dst << 12) |
+           (src1 << 16) |
+           (src2 << 0);
 }
 
-// load an or immediate and rotate it.
-static inline uint32_t 
-arm_or_imm_rot(uint8_t rd, uint8_t rs1, uint8_t imm8, uint8_t rot_nbits) {
-    unimplemented();
+static inline uint32_t arm_sub_imm(uint32_t dst, uint32_t src, uint32_t imm) {
+    return 0xe2400000 |
+           (dst << 12) |
+           (src << 16) |
+           (imm << 0);
 }
+
+static inline uint32_t arm_and(uint32_t dst, uint32_t src1, uint32_t src2) {
+    return 0xe0000000 |
+           (dst << 12) |
+           (src1 << 16) |
+           (src2 << 0);
+}
+
+static inline uint32_t arm_or(uint32_t dst, uint32_t src1, uint32_t src2) {
+    return 0xe1800000 |
+           (dst << 12) |
+           (src1 << 16) |
+           (src2 << 0);
+}
+
+static inline uint32_t arm_mov_reg(uint32_t dst, uint32_t src) {
+    return 0xe1a00000 |
+           (dst << 12) |
+           (src << 0);
+}
+
+static inline uint32_t arm_mov_imm(uint32_t dst, uint32_t imm) {
+    return 0xe3a00000 |
+           (dst << 12) |
+           (imm << 0);
+}
+
+static inline uint32_t arm_ldr_no_off(uint32_t dst, uint32_t addr) {
+    return 0xe5900000 |
+           (dst << 12) |
+           (addr << 16);
+}
+
+static inline uint32_t arm_ldr_imm_off(uint32_t dst, uint32_t addr, int32_t offset) {
+    return 0xe5900000 |
+           (dst << 12) |
+           (addr << 16) |
+           (offset << 0);
+}
+
+static inline uint32_t arm_str_no_off(uint32_t src, uint32_t addr) {
+    return 0xe5800000 |
+           (src << 12) |
+           (addr << 16);
+}
+
+static inline uint32_t arm_str_imm_off(uint32_t src, uint32_t addr, uint32_t offset) {
+    return 0xe5800000 |
+           (src << 12) |
+           (addr << 16) |
+           (offset << 0);
+}
+
+static inline uint32_t arm_nop() {
+    return 0xe320f000;
+}
+
+static inline uint32_t arm_bx(uint32_t reg) {
+    return 0xe12fff10 |
+           (reg << 0);
+}
+
+static inline uint32_t arm_blx(uint32_t reg) {
+    return 0xe12fff30 |
+           (reg << 0);
+}
+
+
 
 #endif
