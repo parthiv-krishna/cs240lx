@@ -34,14 +34,9 @@ void notmain(void) {
     // code[n++] = arm_str_imm_off(arm_r3, arm_sp, 12); // str r3, [sp, #12]
     code[n++] = arm_str_imm_off(arm_lr, arm_sp, 4); // str lr, [sp, #16]
 
-    int32_t offset = (int32_t)&hello - ((int32_t)&code[n] + 8);
-    printk("offset: %d code: %p\n", offset, code);
-    code[n++] = arm_bl(offset); // b hello
+    uint32_t bl = arm_bl((uint32_t) &code[n], (uint32_t) hello); // b hello
+    code[n++] = bl;
 
-    // code[n++] = arm_ldr_imm_off(arm_r0, arm_sp, 0); // ldr r0, [sp, #0]
-    // code[n++] = arm_ldr_imm_off(arm_r1, arm_sp, 4); // ldr r1, [sp, #4]
-    // code[n++] = arm_ldr_imm_off(arm_r2, arm_sp, 8); // ldr r2, [sp, #8]
-    // code[n++] = arm_ldr_imm_off(arm_r3, arm_sp, 12); // ldr r3, [sp, #12]
     code[n++] = arm_ldr_imm_off(arm_lr, arm_sp, 4); // ldr lr, [sp, #16]
     code[n++] = arm_add_imm(arm_sp, arm_sp, 4); // add sp, sp, #16
 

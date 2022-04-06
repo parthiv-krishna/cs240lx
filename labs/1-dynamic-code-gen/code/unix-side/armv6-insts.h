@@ -281,7 +281,8 @@ static inline uint32_t arm_blx(uint32_t reg) {
            (reg << 0);
 }
 
-static inline uint32_t arm_bl(int32_t offset) {
+static inline uint32_t arm_bl(uint32_t current, uint32_t target) {
+    int32_t offset = target - (current + 8); // pc + 8 nonsense
     uint32_t imm = (offset >> 2) & 0xFFFFFF;
     return 0xeb000000 |
            (imm << 0);
