@@ -1,5 +1,5 @@
 # list out the driver program source 
-TEST_SRC = tsop.c
+TEST_SRC = test_ir.c
 
 # your source, shared by driver code.
 #   if you want to use our staff-hc-sr04.o,
@@ -15,6 +15,7 @@ RUN = 1
 
 DEPS = ./Makefile
 SUPPORT_OBJS := $(SRC:.c=.o)
+
 # include $(CS49N_2021_PATH)/libpi/mk/Makefile.template
 
 include $(CS240LX_2022_PATH)/libpi/mk/Makefile.template
