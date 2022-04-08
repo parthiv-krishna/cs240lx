@@ -1,5 +1,5 @@
-// #ifndef IR_H
-// #define IR_H
+#ifndef IR_H
+#define IR_H
 
 #include "rpi.h"
 
@@ -27,4 +27,4 @@ int ir_init(int pin);
 ir_button_t ir_read_button(int pin);
 
 
-// #endif // IR_H
+#endif // IR_H
