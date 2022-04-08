@@ -4,7 +4,11 @@
 // file and put in libpi/src so can use later.
 
 #include "rpi.h"
-enum { ir_eps = 200 };
+enum { ir_eps = 200, 
+       timeout_us = 20000,
+       delay_0 = 4500, 
+       delay_1 = 4500 
+    };
 
 // we should never get this.
 enum { NOISE = 0 } ;
@@ -19,7 +23,14 @@ const char *key_to_str(unsigned x) {
 // adapt your read_while_equal: return 0 if timeout passed, otherwise
 // the number of microseconds + 1 (to prevent 0).
 static int read_while_eq(int pin, int v, unsigned timeout) {
-    unimplemented();
+    unsigned start = timer_get_usec();
+    while (gpio_read(pin) == v) {
+        if (timer_get_usec() - start > timeout) {
+            return 0;
+        }
+    }
+    unsigned end = timer_get_usec();
+    return end - start;
 }
 
 // integer absolute value.
@@ -43,7 +54,9 @@ static int is_skip(struct readings *e) {
 int is_header(struct readings *r, unsigned n) {
     if(n < 2)
         return 0;
-    unimplemented();
+    int zero = abs(r[0].usec - delay_0) <= ir_eps;
+    int one = abs(r[1].usec - delay_1) <= ir_eps;
+    return (zero && one);
 }
 
 // convert <r> into an integer by or'ing in 0 or 1 depending on the 
@@ -71,13 +84,27 @@ static void print_readings(struct readings *r, int n) {
 
 // read in values until we get a timeout, return the number of readings.  
 static int get_readings(int in, struct readings *r, unsigned N) {
-    unimplemented();
+    int n = 0;
+    while (1) {
+        int curr = gpio_read(in);
+        int v = read_while_eq(in, curr, timeout_us);
+        if (v == 0) {
+            break;
+        }
+        if (n == N) {
+            panic("too many readings\n");
+        }
+        r[n].usec = v;
+        r[n++].v = curr;
+    }
+    return n;
 }
 
 // initialize the pin.
 int tsop_init(int input) {
     // is open hi or lo?  have to set pullup or pulldown
-    unimplemented();
+    gpio_set_input(input);
+    gpio_set_pullup(input);
     return 1;
 }
 
@@ -96,6 +123,7 @@ void notmain(void) {
         int n = get_readings(in, r, N);
 
         output("done getting readings\n");
+        print_readings(r, n);
     
         unsigned x = convert(r,n);
         output("converted to %x\n", x);
