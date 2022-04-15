@@ -74,11 +74,11 @@
     // can flip between.
     enum { 
         // to send a 1: set pin high for T1H ns, then low for T0H ns.
-        T1H = ns_to_cycles(0),        // Width of a 1 bit in ns
-        T0H = ns_to_cycles(0),        // Width of a 0 bit in ns
+        T1H = ns_to_cycles(900),        // Width of a 1 bit in ns
+        T0H = ns_to_cycles(350),        // Width of a 0 bit in ns
         // to send a 0: set pin high for T1L ns, then low for T0L ns.
-        T1L = ns_to_cycles(0),        // Width of a 1 bit in ns
-        T0L = ns_to_cycles(0),        // Width of a 0 bit in ns
+        T1L = ns_to_cycles(350),        // Width of a 1 bit in ns
+        T0L = ns_to_cycles(900),        // Width of a 0 bit in ns
 
         // to make the LED switch to the new values, old the pin low for FLUSH ns
         FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
@@ -110,18 +110,24 @@
 #define gpio_set_off "error"
 #define gpio_write "error"
 
+
+static volatile uint32_t *gpio_set0 = (volatile uint32_t *)0x2020001C;
+static volatile uint32_t *gpio_clr0 = (volatile uint32_t *)0x20202028;
+
 // duplicate set_on/off so we can inline to reduce overhead.
 // they have to run in < the delay we are shooting for.
 static inline void gpio_set_on_raw(unsigned pin) {
-    unimplemented();
+    *gpio_set0 = 1 << pin;
 }
+
 static inline void gpio_set_off_raw(unsigned pin) {
-    unimplemented();
+    *gpio_clr0 = 1 << pin;
 }
 
 // use cycle_cnt_read() to delay <n_cyc> cycles measured from <start_cyc>
 static inline void delay_ncycles(unsigned start_cyc, unsigned n_cyc) {
-    unimplemented();
+    while (cycle_cnt_read() - start_cyc < n_cyc)
+        ;
 }
 
 
