@@ -3,8 +3,6 @@
 // cycle counter routines.
 #include "cycle-count.h"
 
-#include "scope-asm.h"
-
 
 // this defines the period: makes it easy to keep track and share
 // with the test generator.
@@ -25,40 +23,45 @@ unsigned
 scope(unsigned pin, log_ent_t *l, unsigned n_max, unsigned max_cycles) {
     unsigned v1, v0 = gpio_read(pin);
 
+    // spin until the pin changes.
+    while((v1 = gpio_read(pin)) == v0)
+        ;
+
+
+    // when we started sampling 
+    unsigned start = cycle_cnt_read(), t = start;
+
+    // sample until record max samples or until exceed <max_cycles>
     unsigned n = 0;
 
-    // spin until the pin changes.
-
-    unsigned start = loop_till_21_change();
-    // sample until record max samples or until exceed <max_cycles>
-
-    // write this code first: record sample when the pin
-    // changes.  then start tuning the whole routine.
-    // asm volatile (".align 16");
+    for(; n < n_max; n++) {
 
 
-    for (int i = v0; i < 10; i++) {
-        l[n++].ncycles = loop_till_21_change();
-        
-    }
-    int ofst = 50;
-
-    for (int i = 0; i < n; i++) {
-        l[i].ncycles -= start + ofst;
-        l[i].v = v0;
+        // write this code first: record sample when the pin
+        // changes.  then start tuning the whole routine.
         v0 = 1 - v0;
+
+        while((v1 = gpio_read(pin)) == v0)
+            ;
+        l[n].ncycles = cycle_cnt_read() - start;
+        l[n].v = v1;
+
+
+
+        // exit when we have run too long.
+        if((cycle_cnt_read() - start) > max_cycles)  {
+            printk("timeout! start=%d, t=%d, minux=%d\n",
+                                 start,t,t-start);
+            return n;
+        }
     }
-
-    printk("timeout! start=%d\n", start);
-
     return n;
 }
 
 void notmain(void) {
     // setup input pin.
-    unsigned pin = 21;
+    int pin = 21;
     gpio_set_input(pin);
-    enable_cache();
 
     // make sure to init cycle counter hw.
     cycle_cnt_init();
@@ -71,8 +74,9 @@ void notmain(void) {
 
     // run 4 times before rebooting: makes things easier.
     // you can get rid of this.
-    for(int i = 0; i < 100; i++) {
+    for(int i = 0; i < 4; i++) {
         unsigned n = scope(pin, log, MAXSAMPLES, msec_to_cycle(250));
+        printk("done\n");
         dump_samples(log, n, CYCLE_PER_FLIP);
     }
     clean_reboot();

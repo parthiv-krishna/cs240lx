@@ -29,7 +29,12 @@ scope(unsigned pin, log_ent_t *l, unsigned n_max, unsigned max_cycles) {
 
     // spin until the pin changes.
 
-    unsigned start = loop_till_21_change();
+    unsigned start;
+    if (!v0) {
+        start = loop_till_21_high();
+    } else {
+        start = loop_till_21_low();
+    }
     // sample until record max samples or until exceed <max_cycles>
 
     // write this code first: record sample when the pin
@@ -38,10 +43,13 @@ scope(unsigned pin, log_ent_t *l, unsigned n_max, unsigned max_cycles) {
 
 
     for (int i = v0; i < 10; i++) {
-        l[n++].ncycles = loop_till_21_change();
-        
+        if (i % 2 == 0) {
+            l[n++].ncycles = loop_till_21_low();
+        } else {
+            l[n++].ncycles = loop_till_21_high();
+        }
     }
-    int ofst = 50;
+    int ofst = 0;
 
     for (int i = 0; i < n; i++) {
         l[i].ncycles -= start + ofst;
@@ -71,7 +79,7 @@ void notmain(void) {
 
     // run 4 times before rebooting: makes things easier.
     // you can get rid of this.
-    for(int i = 0; i < 100; i++) {
+    for(int i = 0; i < 4; i++) {
         unsigned n = scope(pin, log, MAXSAMPLES, msec_to_cycle(250));
         dump_samples(log, n, CYCLE_PER_FLIP);
     }
