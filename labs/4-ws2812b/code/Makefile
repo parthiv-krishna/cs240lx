@@ -2,6 +2,7 @@
 TEST_SRC = 2-neopix.c 1-blink.c  0-timing-check.c # simple.c
 TEST_SRC = 0-timing-check.c 
 TEST_SRC = 1-blink.c
+TEST_SRC = 2-neopix.c
 
 OPT_LEVEL = -O3
 

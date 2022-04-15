@@ -24,7 +24,7 @@ void notmain(void) {
     // make sure when you implement the neopixel 
     // interface works and pushes a pixel around your light
     // array.
-    unsigned npixels = 56;  // you'll have to figure this out.
+    unsigned npixels = 16;  // you'll have to figure this out.
     neo_t h = neopix_init(pix_pin, npixels);
 
     // does 10 increasingly faster loops.
@@ -32,7 +32,7 @@ void notmain(void) {
         output("loop %d\n", j);
         for(int i = 0; i < npixels; i++) {
             place_cursor(h,i);
-            delay_ms(10-j);
+            delay_ms(16*(10-j));
         }
     }
     output("done!\n");
