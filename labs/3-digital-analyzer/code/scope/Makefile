@@ -10,6 +10,7 @@ BOOTLOADER = my-install /dev/ttyUSB0
 # SRC := stop-inline.c
 # STAFF_OBJS = staff-hc-sr04.o
 
+OPT_LEVEL = -O3
 
 # set RUN = 1 if you want the code to automatically run after building.
 RUN = 1
