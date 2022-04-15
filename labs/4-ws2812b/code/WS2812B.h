@@ -93,6 +93,17 @@
     // light strip this might add up.
 
     // put your optimized enums here.
+        enum { 
+        // to send a 1: set pin high for T1H ns, then low for T0H ns.
+        T1H = ns_to_cycles(700),        // Width of a 1 bit in ns
+        T0H = ns_to_cycles(250),        // Width of a 0 bit in ns
+        // to send a 0: set pin high for T1L ns, then low for T0L ns.
+        T1L = ns_to_cycles(250),        // Width of a 1 bit in ns
+        T0L = ns_to_cycles(700),        // Width of a 0 bit in ns
+
+        // to make the LED switch to the new values, old the pin low for FLUSH ns
+        FLUSH = ns_to_cycles(50 *1000)    // how long to hold low to flush
+    };
 
 #endif
 
@@ -110,19 +121,16 @@
 #define gpio_set_off "error"
 #define gpio_write "error"
 
-#define NCYCLES_OFFSET 100
-
-static volatile uint32_t *gpio_set0 = (volatile uint32_t *)0x2020001C;
-static volatile uint32_t *gpio_clr0 = (volatile uint32_t *)0x20202028;
+#define NCYCLES_OFFSET 80
 
 // duplicate set_on/off so we can inline to reduce overhead.
 // they have to run in < the delay we are shooting for.
 static inline void gpio_set_on_raw(unsigned pin) {
-    *gpio_set0 = 1 << pin;
+    *(volatile uint32_t *)0x2020001C = 1 << pin;
 }
 
 static inline void gpio_set_off_raw(unsigned pin) {
-    *gpio_clr0 = 1 << pin;
+    *(volatile uint32_t *)0x20200028 = 1 << pin;
 }
 
 // use cycle_cnt_read() to delay <n_cyc> cycles measured from <start_cyc>
@@ -202,7 +210,13 @@ static inline void pix_flush(unsigned pin) {
 
 // transmit a {0,1} bit to the ws2812b
 static inline void pix_sendbit(unsigned pin, uint8_t b) {
-    unimplemented();
+    if (b & 1) {
+        t1h(pin);
+        t1l(pin);
+    } else {
+        t0h(pin);
+        t0l(pin);
+    }
 }
 
 // use pix_sendbit to send byte <b>
@@ -211,7 +225,15 @@ static inline void pix_sendbit(unsigned pin, uint8_t b) {
 // becomes huge: unclear if better.  if you decide to inline it, make sure you run
 // tests before and after.  
 static void pix_sendbyte(unsigned pin, uint8_t b) {
-    unimplemented();
+    pix_sendbit(pin, b >> 7);
+    pix_sendbit(pin, b >> 6);
+    pix_sendbit(pin, b >> 5);
+    pix_sendbit(pin, b >> 4);
+    pix_sendbit(pin, b >> 3);
+    pix_sendbit(pin, b >> 2);
+    pix_sendbit(pin, b >> 1);
+    pix_sendbit(pin, b >> 0);
+
 }
 
 // use pix_sendbyte to send bytes [<r> red, <g> green, <b> blue out on pin <pin>.
@@ -220,6 +242,8 @@ static inline void pix_sendpixel(unsigned pin, uint8_t r, uint8_t g, uint8_t b) 
     // delay between the send bytes --- when you optimize it's possible you need 
     // to trim the delays you use.
     // use pix_sendbyte to send <r>, <g> <b>
-    unimplemented();
+    pix_sendbyte(pin, g);
+    pix_sendbyte(pin, r);
+    pix_sendbyte(pin, b);
 }
 #endif
