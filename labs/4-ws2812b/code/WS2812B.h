@@ -110,6 +110,7 @@
 #define gpio_set_off "error"
 #define gpio_write "error"
 
+#define NCYCLES_OFFSET 100
 
 static volatile uint32_t *gpio_set0 = (volatile uint32_t *)0x2020001C;
 static volatile uint32_t *gpio_clr0 = (volatile uint32_t *)0x20202028;
@@ -126,7 +127,10 @@ static inline void gpio_set_off_raw(unsigned pin) {
 
 // use cycle_cnt_read() to delay <n_cyc> cycles measured from <start_cyc>
 static inline void delay_ncycles(unsigned start_cyc, unsigned n_cyc) {
-    while (cycle_cnt_read() - start_cyc < n_cyc)
+    if (n_cyc < NCYCLES_OFFSET) {
+        return;
+    }
+    while (cycle_cnt_read() - start_cyc < n_cyc - NCYCLES_OFFSET)
         ;
 }
 
@@ -153,36 +157,38 @@ static unsigned const compensation = 16;
 // you may need to add a constant to correct for this.
 static inline void write_1(unsigned pin, unsigned ncycles) {
     // use gpio_set_on_raw
-    unimplemented();
+    gpio_set_on_raw(pin);
+    delay_ncycles(cycle_cnt_read(), ncycles);
 }
 
 // write 0 for <ncycles>: since reading the cycle counter takes cycles you
 // may need to add a constant to correct for it.
 static inline void write_0(unsigned pin, unsigned ncycles) {
     // use gpio_set_off_raw
-    unimplemented();
+    gpio_set_off_raw(pin);
+    delay_ncycles(cycle_cnt_read(), ncycles);
 }
 
 // implement T1H from the datasheet (call write_1 with the right delay)
 static inline void t1h(unsigned pin) {
-    unimplemented();
+    write_1(pin, T1H);
 }
 
 // implement T0H from the datasheet (call write_0 with the right delay)
 static inline void t0h(unsigned pin) {
-    unimplemented();
+    write_1(pin, T0H);
 }
 // implement T1L from the datasheet.
 static inline void t1l(unsigned pin) {
-    unimplemented();
+    write_0(pin, T1L);
 }
 // implement T0L from the datasheed.
 static inline void t0l(unsigned pin) {
-    unimplemented();
+    write_0(pin, T0L);
 }
 // implement RESET from the datasheet.
 static inline void treset(unsigned pin) {
-    unimplemented();
+    write_0(pin, FLUSH);
 }
 
 /***********************************************************************************
