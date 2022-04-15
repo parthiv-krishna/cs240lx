@@ -15,6 +15,6 @@ BOOTLOADER = my-install /dev/ttyUSB0
 RUN = 1
 
 DEPS = ./Makefile
-SUPPORT_OBJS := $(SRC:.c=.o)
+SUPPORT_OBJS := $(SRC:.c=.o) scope-asm.o
 include $(CS240LX_2022_PATH)/libpi/mk/Makefile.template
 
