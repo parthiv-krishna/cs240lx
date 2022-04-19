@@ -74,7 +74,7 @@ void i2s_init(void) {
 int32_t i2s_read_sample(void) {
     dev_barrier();
     // page 127: RXD indicates that the RX FIFO contains data
-    while (bit_is_off(GET32(addr(i2s_regs->cs)), I2S_CS_RXR)) {
+    while (bit_is_off(GET32(addr(i2s_regs->cs)), I2S_CS_RXD)) {
         // wait for data to be available
     }
     int32_t sample = GET32(addr(i2s_regs->fifo));
