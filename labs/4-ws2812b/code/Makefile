@@ -3,6 +3,7 @@ TEST_SRC = 2-neopix.c 1-blink.c  0-timing-check.c # simple.c
 TEST_SRC = 0-timing-check.c 
 TEST_SRC = 1-blink.c
 TEST_SRC = 2-neopix.c
+TEST_SRC = 3-i2s-test.c
 
 OPT_LEVEL = -O3
 
@@ -18,5 +19,5 @@ TTYUSB =
 RUN = 1
 
 DEPS = ./Makefile
-SUPPORT_OBJS := $(SRC:.c=.o)
+SUPPORT_OBJS := $(SRC:.c=.o) i2s.o
 include $(CS240LX_2022_PATH)/libpi/mk/Makefile.template
