@@ -43,9 +43,10 @@ void notmain(void) {
         // would be some sort of FFT        
         uint32_t tot = 0;
         for (int i = 0; i < 128; i++) {
-            uint32_t curr = i2s_read_sample();
+            int32_t curr = i2s_read_sample();
             int32_t diff = curr - last;
-            tot += abs(diff) >> 25;
+            tot += abs(diff) >> 22;
+            last = curr;
         }
         place_cursor(h, tot / 128);
     }
