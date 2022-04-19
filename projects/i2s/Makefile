@@ -1,15 +1,11 @@
 # list out the driver program source 
-TEST_SRC = 2-neopix.c 1-blink.c  0-timing-check.c # simple.c
-TEST_SRC = 0-timing-check.c 
-TEST_SRC = 1-blink.c
-TEST_SRC = 2-neopix.c
-
+TEST_SRC = 4-audiovis.c
 OPT_LEVEL = -O3
 
 # your source, shared by driver code.
 #   if you want to use our staff-hc-sr04.o,
 #   comment SRC out and uncomment STAFF_OBJS
-SRC := neopixel.c
+SRC = i2s.c
 
 # define this if you need to give the device for your pi
 TTYUSB = 
@@ -18,5 +14,5 @@ TTYUSB =
 RUN = 1
 
 DEPS = ./Makefile
-SUPPORT_OBJS := $(SRC:.c=.o) i2s.o
+SUPPORT_OBJS := $(SRC:.c=.o)
 include $(CS240LX_2022_PATH)/libpi/mk/Makefile.template
