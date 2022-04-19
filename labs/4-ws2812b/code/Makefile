@@ -4,6 +4,7 @@ TEST_SRC = 0-timing-check.c
 TEST_SRC = 1-blink.c
 TEST_SRC = 2-neopix.c
 TEST_SRC = 3-i2s-test.c
+TEST_SRC = 4-audiovis.c
 
 OPT_LEVEL = -O3
 
