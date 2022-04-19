@@ -16,8 +16,8 @@ void notmain(void) {
     i2s_init();
 
     for (int i = 0; i < 100000; i++) {
-        int32_t sample = (int32_t) i2s_read_sample();
-        printk("%x\n", sample);  
+        int32_t sample = i2s_read_sample();
+        printk("%x %d\n", sample, sample);  
     }
 
     output("done!\n");
