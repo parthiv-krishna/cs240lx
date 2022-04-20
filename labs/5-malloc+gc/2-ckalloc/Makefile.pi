@@ -1,5 +1,5 @@
 # list out the driver program source 
-TEST_SRC = 3-ckalloc.c 4-test-ckalloc.c 5-test-ckalloc.c
+TEST_SRC = 3-ckalloc.c 4-test-ckalloc.c 5-test-ckalloc.c 6-test-ckalloc.c
 SRC = kr-malloc.c pi-sbrk.c ckalloc.c
 
 # your source, shared by driver code.
