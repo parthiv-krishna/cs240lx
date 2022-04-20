@@ -19,8 +19,8 @@ typedef union header { /* block header */
 
 
 void notmain(void) {
-    output("doesnt do anything yet\n");
-    return;
+    // output("doesnt do anything yet\n");
+    // return;
 
     char *p0 = kr_malloc(1);
     unsigned n = sizeof (Header) + sizeof(union align);
