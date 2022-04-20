@@ -1,5 +1,5 @@
 # list out the driver program source 
-TEST_SRC = 4-audiovis.c
+TEST_SRC = 3-audiovis.c
 OPT_LEVEL = -O3
 
 # your source, shared by driver code.

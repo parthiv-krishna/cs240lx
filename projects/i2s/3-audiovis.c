@@ -1,6 +1,5 @@
 /*
- * simple test to use your buffered neopixel interface to push a cursor around
- * a light array.
+ * display audio visualization on neopixels
  */
 #include "rpi.h"
 #include "WS2812B.h"
