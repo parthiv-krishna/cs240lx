@@ -31,19 +31,41 @@ void *ck_hdr_end(hdr_t *h) {
 
 // is ptr in <h>?
 unsigned ck_ptr_in_block(hdr_t *h, void *ptr) {
-    unimplemented();
+    char *start = (char *)(h + 1);
+    char *end = start + h->nbytes_alloc;
+    char *p = (char *)ptr;
+    return (p >= start && p < end);
 }
 
 
 int ck_ptr_is_alloced(void *ptr) {
     for(hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h))
         if(ck_ptr_in_block(h,ptr)) {
-            output("found %p in %p\n", ptr, h);
+            // output("found %p in %p\n", ptr, h);
             return 1;
         }
     return 0;
 }
 
+static void list_remove(hdr_t **l, hdr_t *h) {
+    assert(l);
+    hdr_t *prev = *l;
+ 
+    if(prev == h) {
+        *l = h->next;
+        return;
+    }
+
+    hdr_t *p;
+    while((p = ck_next_hdr(prev))) {
+        if(p == h) {
+            prev->next = p->next;
+            return;
+        }
+        prev = p;
+    }
+    panic("did not find %p in list\n", h);
+}
 
 // free a block allocated with <ckalloc>
 void (ckfree)(void *addr, src_loc_t l) {
@@ -55,23 +77,35 @@ void (ckfree)(void *addr, src_loc_t l) {
     loc_debug(l, "freeing %p\n", addr);
     
     h->state = FREED;
-    unimplemented();
+    memset(h + 1, 0, h->nbytes_alloc);
     assert(ck_ptr_is_alloced(addr));
     kr_free(h);
+    list_remove(&alloc_list, h);
+    assert(!ck_ptr_is_alloced(addr));
 }
 
 // interpose on kr_malloc allocations and
 //  1. allocate enough space for a header and fill it in.
 //  2. add the allocated block to  the allocated list.
-void *(ckalloc)(unsigned nbytes, src_loc_t l) {
+void *(ckalloc)(uint32_t nbytes, src_loc_t loc) {
 
     hdr_t *h = kr_malloc(nbytes + sizeof *h);
-    h->nbytes_alloc = nbytes;
-    h->state = ALLOCED;
-    h->alloc_loc = l;
 
     memset(h, 0, sizeof *h);
-    loc_debug(l, "allocating %p\n", h);
+    h->nbytes_alloc = nbytes;
+    h->state = ALLOCED;
+    h->alloc_loc = loc;
 
-    unimplemented();
+
+    loc_debug(loc, "allocating %p\n", h);
+
+    void *addr = (void *)(h + 1);
+
+    assert(!ck_ptr_is_alloced(addr));
+    h->next = alloc_list;
+    alloc_list = h;
+
+    assert(ck_ptr_is_alloced(addr));
+
+    return addr;
 }

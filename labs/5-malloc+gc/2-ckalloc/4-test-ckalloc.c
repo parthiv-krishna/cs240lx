@@ -22,7 +22,7 @@ void notmain(void) {
     char *p0 = ckalloc(1);
     unsigned n = sizeof (Header) + sizeof(union align);
 
-    panic("n=%d\n", n);
+    // panic("n=%d\n", n);
     int ntests = 10;
 
     output("malloc(1) = %p\n", p0);
@@ -30,9 +30,9 @@ void notmain(void) {
         char *p1 = ckalloc(1);
         output("ckalloc(1) = %p\n", p1);
 
-        assert(p0<p1);
+        assert(p0>p1);
         if(p0 + n != p1)
-            panic("p0=%p, p1=%p, expected diff=%u, actual=%lu\n", p0,p1,n, p1-p0);
+            panic("p0=%p, p1=%p, expected diff=%u, actual=%lld\n", p0,p1,n, p1-p0);
         else
             output("passed iter %d\n", i);
     }
