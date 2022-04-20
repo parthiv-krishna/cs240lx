@@ -22,12 +22,20 @@ void notmain(void) {
     //  2. write different pixels.
     for(unsigned i = 0; i < 8; i++) {
         output("setting on\n");
-        pix_sendpixel(pix_pin, 0,0,0xff);
+        for (int i = 0; i < 4; i++) {
+            pix_sendpixel(pix_pin, 0,0,0xff);
+            pix_sendpixel(pix_pin, 0,0xff,0);
+            pix_sendpixel(pix_pin, 0xff,0,0);
+            pix_sendpixel(pix_pin, 0xff, 0xff, 0xff);
+        }
+
         pix_flush(pix_pin);
         delay_ms(1000);
 
         output("setting off\n");
-        pix_sendpixel(pix_pin, 0,0,0);
+        for (int i = 0; i < 16; i++) {
+            pix_sendpixel(pix_pin, 0,0,0);
+        }
         pix_flush(pix_pin);
         delay_ms(1000);
     }
