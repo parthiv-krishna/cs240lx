@@ -74,7 +74,6 @@ static hdr_t *is_ptr(uint32_t addr) {
 //
 #include "libc/helper-macros.h"
 static void mark(uint32_t *p, uint32_t *e) {
-    printk("marking from %p to %p\n", p, e);
     assert(p<e);
     // maybe keep this same thing?
     assert(aligned(p,4));
@@ -92,7 +91,6 @@ static void mark(uint32_t *p, uint32_t *e) {
                 h->mark = 1;
                 char *start = (char *)(h + 1);
                 char *end = start + h->nbytes_alloc;
-                printk("found block %p, marking from %p to %p\n", h, start, end);
                 mark((uint32_t *)start, (uint32_t *)end);
             }
         }
@@ -111,7 +109,6 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
     // iterate over all blocks, and check for leaks.
     for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h)) {
         if (h->refs_start == 0) {
-            printk("block %p %d start %d middle\n", h, h->refs_start, h->refs_middle);
 
             if(h->refs_middle > 0 && warn_no_start_ref_p) {
                 output("WARNING: block %p has no start refs!\n", h);
