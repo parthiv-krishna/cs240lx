@@ -74,12 +74,29 @@ static hdr_t *is_ptr(uint32_t addr) {
 //
 #include "libc/helper-macros.h"
 static void mark(uint32_t *p, uint32_t *e) {
+    printk("marking from %p to %p\n", p, e);
     assert(p<e);
     // maybe keep this same thing?
     assert(aligned(p,4));
     assert(aligned(e,4));
 
-    unimplemented();
+    for (; p < e; p++) {
+        hdr_t *h = is_ptr(*p);
+        if (h) {
+            if (*p == (uint32_t)(h + 1)) {
+                h->refs_start++;
+            } else {
+                h->refs_middle++;
+            }
+            if(!h->mark) { 
+                h->mark = 1;
+                char *start = (char *)(h + 1);
+                char *end = start + h->nbytes_alloc;
+                printk("found block %p, marking from %p to %p\n", h, start, end);
+                mark((uint32_t *)start, (uint32_t *)end);
+            }
+        }
+    }
 }
 
 
@@ -91,7 +108,22 @@ static unsigned sweep_leak(int warn_no_start_ref_p) {
 	output("---------------------------------------------------------\n");
 	output("checking for leaks:\n");
 
-    unimplemented();
+    // iterate over all blocks, and check for leaks.
+    for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h)) {
+        if (h->refs_start == 0) {
+            printk("block %p %d start %d middle\n", h, h->refs_start, h->refs_middle);
+
+            if(h->refs_middle > 0 && warn_no_start_ref_p) {
+                output("WARNING: block %p has no start refs!\n", h);
+                maybe_errors++;
+            } else if (h->refs_middle == 0) {
+                output("ERROR: block %p has no refs!\n", h);
+                errors++;
+            }
+        }
+        h->mark = 0;
+        nblocks++;
+    }
 
 
 	trace("\tGC:Checked %d blocks.\n", nblocks);
@@ -128,8 +160,14 @@ static void mark_all(void) {
     regs[2] = 0;
     regs[3] = 0;
 
-    unimplemented();
-    mark(regs, &regs[14]);
+    asm volatile("str r0, [%0, #0]\n\t"
+                 "str r1, [%0, #4]\n\t"
+                 "str r2, [%0, #8]\n\t"
+                 "str r3, [%0, #12]\n\t"
+                 : : "r" (regs) : "memory");
+
+
+    // mark(regs, &regs[14]);
 
     assert(regs[0] == (uint32_t)regs[0]);
     mark(regs, &regs[14]);
@@ -138,7 +176,9 @@ static void mark_all(void) {
     // mark the stack: we are assuming only a single
     // stack.  note: stack grows down.
     uint32_t *stack_top = (void*)STACK_ADDR;
-    unimplemented();
+    uint32_t *sp;
+    asm volatile("mov %0, sp" : "=r" (sp));
+    mark(sp, stack_top);
 
     // these symbols are defined in our memmap
     extern uint32_t __bss_start__, __bss_end__;
@@ -189,7 +229,17 @@ static unsigned sweep_free(void) {
 	output("---------------------------------------------------------\n");
 	output("compacting:\n");
 
-    unimplemented();
+    for (hdr_t *h = ck_first_hdr(); h; h = ck_next_hdr(h)) {
+        if (h->refs_start == 0 && h->refs_middle == 0) {
+            if (h->nbytes_alloc) {
+                nfreed++;
+                nbytes_freed += h->nbytes_alloc;
+                ckfree(h + 1);
+            }
+        }
+        nblocks++;
+        h->mark = 0;
+    }
 
 	trace("\tGC:Checked %d blocks, freed %d, %d bytes\n", nblocks, nfreed, nbytes_freed);
 
