@@ -21,7 +21,7 @@ src_loc_t src_loc_mk(const char *file, const char *func, unsigned lineno) {
 } while(0)
 
 #define loc_debug(l, args...) do {                              \
-    output("%s:%s:%d:", (l).file, (l).func, (l).lineno);        \
+    output("[%s:%s:%d:]", (l).file, (l).func, (l).lineno);        \
     output(args);                                                \
 } while(0)
 
