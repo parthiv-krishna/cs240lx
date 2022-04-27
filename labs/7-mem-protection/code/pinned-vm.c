@@ -53,12 +53,6 @@ uint32_t lockdown_attr_get(void) {
     return cp15_tlb_lockdown_attr_get();
 }
 
-// uint32_t tlb_get_va_at(int index) {
-//     assert (index < TLB_N_LOCKDOWN);
-//     cp15_tlb_lockdown_index_set(index);
-//     uint32_t reg = cp15_tlb_lockdown_va_get();
-//     return bits_get(reg, 12, 31) << 12;
-// }
 
 // do a manual translation in tlb:
 //   1. store result in <result>
@@ -68,20 +62,29 @@ int tlb_contains_va(uint32_t *result, uint32_t va) {
     // 3-79
     assert(bits_get(va, 0,2) == 0);
 
-    uint32_t pa = 0;
-    pa = bits_set(pa, 0, 19, bits_get(va, 0, 19));
-
-    uint32_t va_msbs = bits_get(va, 20, 31);
+    // table 3-150 size field
+    static unsigned split_opts[] = {24, 12, 16, 20};
 
     for (int i = 0; i < TLB_N_LOCKDOWN; i++) {
+
+        // figure out where to split pa|va using page size
         lockdown_index_set(i);
+        uint32_t pa_reg = lockdown_pa_get();
+        uint32_t size = bits_get(pa_reg, 6, 7);
+        unsigned split = split_opts[size];
+
+        // compare msbs of given va with what the TLB has at this idx
+        uint32_t va_msbs = bits_get(va, split, 31);
         uint32_t va_reg = lockdown_va_get();
-        uint32_t va_reg_msbs = bits_get(va_reg, 20, 31);
+        uint32_t va_reg_msbs = bits_get(va_reg, split, 31);
         if (va_msbs == va_reg_msbs) {
-            // match
-            uint32_t lockdown_pa_reg = lockdown_pa_get();
-            uint32_t pa_reg_msbs = bits_get(lockdown_pa_reg, 20, 31);
-            pa = bits_set(pa, 20, 31, pa_reg_msbs);
+            // match. get the pa msbs
+            uint32_t pa_reg_msbs = bits_get(pa_reg, split, 31);
+
+            // construct pa, lsbs from va and msbs from tlb
+            uint32_t pa = 0;
+            pa = bits_set(pa, 0, split - 1, bits_get(va, 0, split - 1));
+            pa = bits_set(pa, split, 31, pa_reg_msbs);
             *result = pa;
             return 1;
         }
