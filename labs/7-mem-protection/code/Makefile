@@ -6,7 +6,7 @@ TEST_SRC = tests/0-test3.c
 SUPPORT_OBJS = cstart.o  pinned-vm.o
 
 # you will swap in yours
-STAFF_OBJS = staff-mmu-asm.o staff-mmu.o   staff-pinned-vm.o staff-mmu-except.o 
+STAFF_OBJS = staff-mmu-asm.o staff-mmu.o   staff-mmu-except.o 
 
 # staff-pinned-vm.o
 
