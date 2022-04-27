@@ -20,15 +20,45 @@
 
 coproc_mk(tlb_lockdown_index, p15, 5, c15, c4, 2);
 coproc_mk(tlb_lockdown_va, p15, 5, c15, c5, 2);
-coproc_mk(tlb_lockdown_attrs, p15, 5, c15, c7, 2);
+coproc_mk(tlb_lockdown_attr, p15, 5, c15, c7, 2);
 coproc_mk(tlb_lockdown_pa, p15, 5, c15, c6, 2);
 
-uint32_t tlb_get_va_at(int index) {
-    assert (index < TLB_N_LOCKDOWN);
-    cp15_tlb_lockdown_index_set(index);
-    uint32_t reg = cp15_tlb_lockdown_va_get();
-    return bits_get(reg, 12, 31);
+
+
+void lockdown_index_set(uint32_t x) {
+    cp15_tlb_lockdown_index_set(x);
 }
+uint32_t lockdown_index_get(void) {
+    return cp15_tlb_lockdown_index_get();
+}
+
+void lockdown_va_set(uint32_t x) {
+    cp15_tlb_lockdown_va_set(x);
+}
+uint32_t lockdown_va_get(void) {
+    return cp15_tlb_lockdown_va_get();
+}
+
+void lockdown_pa_set(uint32_t x) {
+    cp15_tlb_lockdown_pa_set(x);
+}
+uint32_t lockdown_pa_get(void) {
+    return cp15_tlb_lockdown_pa_get();
+}
+
+void lockdown_attr_set(uint32_t x) {
+    cp15_tlb_lockdown_attr_set(x);
+}
+uint32_t lockdown_attr_get(void) {
+    return cp15_tlb_lockdown_attr_get();
+}
+
+// uint32_t tlb_get_va_at(int index) {
+//     assert (index < TLB_N_LOCKDOWN);
+//     cp15_tlb_lockdown_index_set(index);
+//     uint32_t reg = cp15_tlb_lockdown_va_get();
+//     return bits_get(reg, 12, 31) << 12;
+// }
 
 // do a manual translation in tlb:
 //   1. store result in <result>
@@ -44,10 +74,12 @@ int tlb_contains_va(uint32_t *result, uint32_t va) {
     uint32_t va_msbs = bits_get(va, 20, 31);
 
     for (int i = 0; i < TLB_N_LOCKDOWN; i++) {
-        uint32_t va_reg_msbs = tlb_get_va_at(i);
+        lockdown_index_set(i);
+        uint32_t va_reg = lockdown_va_get();
+        uint32_t va_reg_msbs = bits_get(va_reg, 20, 31);
         if (va_msbs == va_reg_msbs) {
             // match
-            uint32_t lockdown_pa_reg = cp15_tlb_lockdown_pa_get();
+            uint32_t lockdown_pa_reg = lockdown_pa_get();
             uint32_t pa_reg_msbs = bits_get(lockdown_pa_reg, 20, 31);
             pa = bits_set(pa, 20, 31, pa_reg_msbs);
             *result = pa;
@@ -80,7 +112,7 @@ void pin_mmu_sec(unsigned idx,
 
     // put your code here.
     x = bits_set(0, 0, 2, idx);
-    cp15_tlb_lockdown_index_set(x);
+    lockdown_index_set(x);
 
     // table 3-149
     va_ent = bits_set(0, 12, 31, bits_get(va, 12, 31));
@@ -88,7 +120,7 @@ void pin_mmu_sec(unsigned idx,
         va_ent = bit_set(va_ent, 9); // makes it global
     }
     va_ent = bits_set(va_ent, 0, 7, e.asid);
-    cp15_tlb_lockdown_va_set(va_ent);
+    lockdown_va_set(va_ent);
 
     // table 3-150
     pa_ent = bits_set(0, 12, 31, bits_get(pa, 12, 31)); 
@@ -96,19 +128,19 @@ void pin_mmu_sec(unsigned idx,
     pa_ent = bits_set(pa_ent, 6, 7, e.pagesize); // size
     pa_ent = bits_set(pa_ent, 1, 3, e.AP_perm); // APX and AP
     pa_ent = bit_set(pa_ent, 0); // valid
-    cp15_tlb_lockdown_pa_set(pa_ent);
+    lockdown_pa_set(pa_ent);
 
     // table 3-152
     attr = bits_set(0, 7, 10, e.dom); // domain
     attr = bits_set(attr, 1, 5, e.mem_attr); // TEX C V
-    cp15_tlb_lockdown_attrs_set(attr);
+    lockdown_attr_set(attr);
 
 
-    if((x = cp15_tlb_lockdown_va_get()) != va_ent)
+    if((x = lockdown_va_get()) != va_ent)
         panic("lockdown va: expected %x, have %x\n", va_ent,x);
-    if((x = cp15_tlb_lockdown_pa_get()) != pa_ent)
+    if((x = lockdown_pa_get()) != pa_ent)
         panic("lockdown pa: expected %x, have %x\n", pa_ent,x);
-    if((x = cp15_tlb_lockdown_attrs_get()) != attr)
+    if((x = lockdown_attr_get()) != attr)
         panic("lockdown attr: expected %x, have %x\n", attr,x);
 }
 
