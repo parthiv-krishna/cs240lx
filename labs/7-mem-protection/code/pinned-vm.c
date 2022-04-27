@@ -9,20 +9,52 @@
 #include "pinned-vm-asm.h"
 #include "mmu.h"
 #include "procmap.h"
+#include "armv6-debug.h"
+
+#define TLB_N_LOCKDOWN 8
 
 // generate the _get and _set methods.
 // (see asm-helpers.h for the cp_asm macro 
 // definition)
 // arm1176.pdf: 3-149
 
+coproc_mk(tlb_lockdown_index, p15, 5, c15, c4, 2);
+coproc_mk(tlb_lockdown_va, p15, 5, c15, c5, 2);
+coproc_mk(tlb_lockdown_attrs, p15, 5, c15, c7, 2);
+coproc_mk(tlb_lockdown_pa, p15, 5, c15, c6, 2);
+
+uint32_t tlb_get_va_at(int index) {
+    assert (index < TLB_N_LOCKDOWN);
+    cp15_tlb_lockdown_index_set(index);
+    uint32_t reg = cp15_tlb_lockdown_va_get();
+    return bits_get(reg, 12, 31);
+}
+
 // do a manual translation in tlb:
 //   1. store result in <result>
 //   2. return 1 if entry exists, 0 otherwise.
 int tlb_contains_va(uint32_t *result, uint32_t va) {
+
     // 3-79
     assert(bits_get(va, 0,2) == 0);
 
-    unimplemented();
+    uint32_t pa = 0;
+    pa = bits_set(pa, 0, 19, bits_get(va, 0, 19));
+
+    uint32_t va_msbs = bits_get(va, 20, 31);
+
+    for (int i = 0; i < TLB_N_LOCKDOWN; i++) {
+        uint32_t va_reg_msbs = tlb_get_va_at(i);
+        if (va_msbs == va_reg_msbs) {
+            // match
+            uint32_t lockdown_pa_reg = cp15_tlb_lockdown_pa_get();
+            uint32_t pa_reg_msbs = bits_get(lockdown_pa_reg, 20, 31);
+            pa = bits_set(pa, 20, 31, pa_reg_msbs);
+            *result = pa;
+            return 1;
+        }
+    }
+    return 0;
 }
 
 // map <va>-><pa> at TLB index <idx> with attributes <e>
@@ -47,13 +79,36 @@ void pin_mmu_sec(unsigned idx,
     uint32_t x, va_ent, pa_ent, attr;
 
     // put your code here.
-    unimplemented();
+    x = bits_set(0, 0, 2, idx);
+    cp15_tlb_lockdown_index_set(x);
 
-    if((x = lockdown_va_get()) != va_ent)
+    // table 3-149
+    va_ent = bits_set(0, 12, 31, bits_get(va, 12, 31));
+    if (e.G) {
+        va_ent = bit_set(va_ent, 9); // makes it global
+    }
+    va_ent = bits_set(va_ent, 0, 7, e.asid);
+    cp15_tlb_lockdown_va_set(va_ent);
+
+    // table 3-150
+    pa_ent = bits_set(0, 12, 31, bits_get(pa, 12, 31)); 
+    pa_ent = bit_set(pa_ent, 9); // not secure
+    pa_ent = bits_set(pa_ent, 6, 7, e.pagesize); // size
+    pa_ent = bits_set(pa_ent, 1, 3, e.AP_perm); // APX and AP
+    pa_ent = bit_set(pa_ent, 0); // valid
+    cp15_tlb_lockdown_pa_set(pa_ent);
+
+    // table 3-152
+    attr = bits_set(0, 7, 10, e.dom); // domain
+    attr = bits_set(attr, 1, 5, e.mem_attr); // TEX C V
+    cp15_tlb_lockdown_attrs_set(attr);
+
+
+    if((x = cp15_tlb_lockdown_va_get()) != va_ent)
         panic("lockdown va: expected %x, have %x\n", va_ent,x);
-    if((x = lockdown_pa_get()) != pa_ent)
+    if((x = cp15_tlb_lockdown_pa_get()) != pa_ent)
         panic("lockdown pa: expected %x, have %x\n", pa_ent,x);
-    if((x = lockdown_attr_get()) != attr)
+    if((x = cp15_tlb_lockdown_attrs_get()) != attr)
         panic("lockdown attr: expected %x, have %x\n", attr,x);
 }
 
