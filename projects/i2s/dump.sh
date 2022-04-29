@@ -1,0 +1,1 @@
+make 2>&1 | tee | grep DUMP | tr -d DUMP > py/dump.txt
