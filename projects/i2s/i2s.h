@@ -37,6 +37,14 @@ _Static_assert(offsetof(i2s_regs_t, int_en) == 0x18, "i2s_regs_t int_en offset")
 _Static_assert(offsetof(i2s_regs_t, int_stc) == 0x1c, "i2s_regs_t int_stc offset");
 _Static_assert(offsetof(i2s_regs_t, gray) == 0x20, "i2s_regs_t gray offset");
 
+// timer divider (BCM peripherals page 108)
+typedef enum {
+    I2S_CLK_DIV_FRAC_LB = 0,
+    I2S_CLK_DIV_FRAC_UB = 11,
+    I2S_CLK_DIV_INT_LB = 12,
+    I2S_CLK_DIV_INT_UB = 23
+} i2s_div_regs_t;
+
 // cs register bits (BCM peripherals page 126)
 typedef enum {
     I2S_CS_EN = 0,
@@ -70,7 +78,6 @@ typedef enum {
     I2S_RXC_CH1POS_UB = 29,
     I2S_RXC_CH1EN = 30,         // channel 1 enable
     I2S_RXC_CH1WEX = 31,        // channel 1 width extension
-
 } i2s_rxc_bits_t;
 
 
@@ -87,6 +94,11 @@ typedef enum {
 #define CM_REGS_MSB 0x5A000000  // for some reason, we always need to write MS byte of CM regs with 0x5A
 #define CM_CTRL_XTAL 0x01   // want to write 0x01 to CM_PCM_CTRL to use 19.2 MHz oscillator
 #define CM_CTRL_EN (1 << 4) // bit 4 is enable bit
+#define CM_CTRL_MASH3 (3 << 9) // bits 9-10 are MASH control, want 3 stage for best performance
+
+// clock divider: 19.2 MHz / 6.8027 / 64 = 44.1001 KHz
+#define CM_DIV_INT 6        // integer divider for 19.2 MHz clock
+#define CM_DIV_FRAC 3288    // fractional divider for 19.2 MHz clock (experimentally determined)
 
 typedef struct {
     uint32_t other_regs[0x26];  // don't care

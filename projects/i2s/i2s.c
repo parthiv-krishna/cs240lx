@@ -20,13 +20,17 @@ void i2s_init(void) {
 
     // See https://elinux.org/BCM2835_datasheet_errata#p107-108_table_6-35
     // and BCM2835 peripheral manual page 105 (section 6.3)
-    // I think we can get away with an integer divisor of 4
-    PUT32(addr(cm_regs->pcm_div), CM_REGS_MSB | (4 << 12));
-    assert(GET32(addr(cm_regs->pcm_div)) == (4 << 12));
+    // I think we can get away with an integer divisor of 7
+    // approx 42.9 kHz (want 44.1 kHz)
+    uint32_t pcm_div = 0;
+    pcm_div = bits_set(pcm_div, I2S_CLK_DIV_INT_LB, I2S_CLK_DIV_INT_UB, CM_DIV_INT);
+    pcm_div = bits_set(pcm_div, I2S_CLK_DIV_FRAC_LB, I2S_CLK_DIV_FRAC_UB, CM_DIV_FRAC);
+    PUT32(addr(cm_regs->pcm_div), CM_REGS_MSB | pcm_div);
+    assert(GET32(addr(cm_regs->pcm_div)) == pcm_div);
 
     // enable the clock manager
-    PUT32(addr(cm_regs->pcm_ctrl), CM_REGS_MSB | CM_CTRL_EN | CM_CTRL_XTAL);
-    assert(GET32(addr(cm_regs->pcm_ctrl)) == (CM_CTRL_EN | CM_CTRL_XTAL));
+    PUT32(addr(cm_regs->pcm_ctrl), CM_REGS_MSB | CM_CTRL_EN | CM_CTRL_XTAL | CM_CTRL_MASH3);
+    assert(GET32(addr(cm_regs->pcm_ctrl)) == (CM_CTRL_EN | CM_CTRL_XTAL | CM_CTRL_MASH3));
 
     // ensure writes to clock manager are complete since we are going to i2s
     dev_barrier();
