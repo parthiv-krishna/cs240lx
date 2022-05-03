@@ -72,6 +72,12 @@ typedef enum {
 
 // rx control register bits (BCM peripherals page 132)
 typedef enum {
+    I2S_RXC_CH2WID_LB = 0,     // channel 2 width
+    I2S_RXC_CH2WID_UB = 3,
+    I2S_RXC_CH2POS_LB = 4,     // channel 2 position
+    I2S_RXC_CH2POS_UB = 13,
+    I2S_RXC_CH2EN = 14,         // channel 2 enable
+    I2S_RXC_CH2WEX = 15,        // channel 2 width extension
     I2S_RXC_CH1WID_LB = 16,     // channel 1 width
     I2S_RXC_CH1WID_UB = 19,
     I2S_RXC_CH1POS_LB = 20,     // channel 1 position

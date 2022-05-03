@@ -51,6 +51,10 @@ void i2s_init(void) {
     rxc = bit_set(rxc, I2S_RXC_CH1EN);
     rxc = bits_set(rxc, I2S_RXC_CH1WID_LB, I2S_RXC_CH1WID_UB, 8);
     rxc = bit_set(rxc, I2S_RXC_CH1WEX);
+    // // Channel 2 -- a bit confusing on how to use
+    // rxc = bit_set(rxc, I2S_RXC_CH2EN);
+    // rxc = bits_set(rxc, I2S_RXC_CH2WID_LB, I2S_RXC_CH2WID_UB, 8);
+    // rxc = bit_set(rxc, I2S_RXC_CH2WEX);
     PUT32(addr(i2s_regs->rx_cfg), rxc);
     assert(GET32(addr(i2s_regs->rx_cfg)) == rxc);
 
