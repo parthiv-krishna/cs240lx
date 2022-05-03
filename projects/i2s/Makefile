@@ -1,5 +1,6 @@
 # list out the driver program source 
 TEST_SRC = 2-i2s-dump.c
+TEST_SRC = 1-i2s-test.c
 OPT_LEVEL = -O3
 
 # your source, shared by driver code.

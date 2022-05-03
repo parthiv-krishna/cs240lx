@@ -23,9 +23,9 @@ void notmain(void) {
     }
     unsigned end = timer_get_usec();
 
-    for (int i = 0; i < N; i++) {
-        printk("DUMP%x\n", buf[i]);  
-    }
+    // for (int i = 0; i < N; i++) {
+    //     printk("DUMP%x\n", buf[i]);  
+    // }
 
     printk("Measured %d samples in %d us\n", N, end - start);
 
