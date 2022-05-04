@@ -37,9 +37,7 @@ void notmain(void) {
     int16_t real[FFT_LEN] = {0};
     int16_t imag[FFT_LEN] = {0};
 
-    int i = 0;
-    while (i < 2) {
-        i = 1;
+    while (1) {
         for (int i = 0; i < FFT_LEN; i++) {
             real[i] = to_q15(i2s_read_sample());
             imag[i] = 0;

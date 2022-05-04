@@ -3,6 +3,7 @@ TEST_SRC = 1-fft-test.c
 TEST_SRC = 2-fft-time.c
 TEST_SRC = 3-fft-freqout.c
 TEST_SRC = 4-fft-freqviz.c
+TEST_SRC = 5-buckets.c
 OPT_LEVEL = -O3
 
 # your source, shared by driver code.
