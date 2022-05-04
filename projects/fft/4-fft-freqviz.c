@@ -3,21 +3,30 @@
 #include "i2s.h"
 #include "neopixel.h"
 
-#define FFT_LEN 1024
 #define LOG2_FFT_LEN 10
+#define FFT_LEN (1 << LOG2_FFT_LEN)
+
 #define FS 44100
 // attempt to reject harmonics. 
 #define MAX_THRESH_FACTOR 5 / 4
 
 #define NEOPIX_PIN 2
 #define NEOPIX_LEN 16
-#define NEOPIX_MIN_FREQ 300
-#define NEOPIX_MAX_FREQ 1000
+#define NEOPIX_MIN_FREQ 430
+#define NEOPIX_MAX_FREQ 800
 
 
 int16_t to_q15(uint32_t x) {
     int32_t xs = x - (1 << 31);
-    return (int16_t)(xs >> 12);
+    return (int16_t)(xs >> 8);
+}
+
+int get_idx(int freq) {
+    if (freq < NEOPIX_MIN_FREQ || freq > NEOPIX_MAX_FREQ) {
+        return -1;
+    }
+
+    return ((freq - NEOPIX_MIN_FREQ) * NEOPIX_LEN) / (NEOPIX_MAX_FREQ - NEOPIX_MIN_FREQ);
 }
 
 void notmain(void) {
@@ -51,12 +60,13 @@ void notmain(void) {
 
         int16_t freq = data_max_idx * FS / FFT_LEN;
 
-        int neopix_idx = freq * NEOPIX_LEN / NEOPIX_MAX_FREQ;
+        int neopix_idx = get_idx(freq);
+        for (int i = 0; i < neopix_idx; i++) {
+            neopix_write(neo, i, 0x80, 0x80, 0x80);
+        }
+        neopix_flush(neo);
 
         printk("%dHz, index %d\n", freq, neopix_idx);
-
-        neopix_write(neo, neopix_idx, 0xFF, 0xFF, 0xFF);
-        neopix_flush(neo);
 
     }
 
