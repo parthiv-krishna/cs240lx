@@ -8,16 +8,18 @@
 
 void notmain(void) {
 
-    int16_t data[N];
+    int16_t real[N];
+    int32_t imag[N];
 
     for (int i = 0; i < N; i++) {
-        data[i] = 1024;
+        real[i] = 1024;
+        imag[i] = 0;
     }
 
 
     uint32_t start = timer_get_usec();
     for (int i = 0; i < NUM_TRIALS; i++) {
-        fft_fixed_rfft(data, LOG2_N, 0);
+        fft_fixed_cfft(real, imag, LOG2_N, 0);
     }
     uint32_t end = timer_get_usec();
 
