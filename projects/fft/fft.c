@@ -6,18 +6,6 @@
 // attempted to cleanup the code a bit since
 // it's c code from the late 80s
 
-// fixed point multiply -- specific to arm_none_eabi
-inline int16_t FIXED_MUL(int16_t a, int16_t b)
-{
-	int32_t c;
-	// smulbb -> signed multiply bottom half * bottom half
-    asm volatile ("smulbb %0, %1, %2" : "=r" (c) :"r" ((int32_t) a), "r" ((int32_t) b));
-
-    // save the most significant bit that's lost (round up if set)
-	int32_t round = (c >> 14) & 1;
-	return (c >> 15) + round;
-}
-
 // fft_fixed_cfft() - perform forward/inverse complex FFT in-place
 int32_t fft_fixed_cfft(int16_t real[], int16_t imag[], int16_t log2_len, unsigned inverse) {
 
@@ -93,8 +81,8 @@ int32_t fft_fixed_cfft(int16_t real[], int16_t imag[], int16_t log2_len, unsigne
 			}
 			for (unsigned i = curr; i < n; i += i_stride) {
 				j = i + len;
-				int16_t base_real = FIXED_MUL(twid_real, real[j]) - FIXED_MUL(twid_imag, imag[j]);
-				int16_t base_imag = FIXED_MUL(twid_real, imag[j]) + FIXED_MUL(twid_imag, real[j]);
+				int16_t base_real = fft_fixed_mul(twid_real, real[j]) - fft_fixed_mul(twid_imag, imag[j]);
+				int16_t base_imag = fft_fixed_mul(twid_real, imag[j]) + fft_fixed_mul(twid_imag, real[j]);
 				int16_t curr_real = real[i];
 				int16_t curr_imag = imag[i];
 				if (shift) {
