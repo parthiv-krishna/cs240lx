@@ -7,7 +7,7 @@
 // it's c code from the late 80s
 
 // fft_fixed_cfft() - perform forward/inverse complex FFT in-place
-int32_t fft_fixed_cfft(int16_t real[], int16_t imag[], int16_t log2_len, unsigned inverse) {
+int32_t fft_fixed_cfft(int16_t *real, int16_t *imag, int16_t log2_len, unsigned inverse) {
 
 	unsigned n = 1 << log2_len;
 
@@ -81,8 +81,8 @@ int32_t fft_fixed_cfft(int16_t real[], int16_t imag[], int16_t log2_len, unsigne
 			}
 			for (unsigned i = curr; i < n; i += i_stride) {
 				j = i + len;
-				int16_t base_real = fft_fixed_mul(twid_real, real[j]) - fft_fixed_mul(twid_imag, imag[j]);
-				int16_t base_imag = fft_fixed_mul(twid_real, imag[j]) + fft_fixed_mul(twid_imag, real[j]);
+				int16_t base_real = fft_fixed_mul_q15(twid_real, real[j]) - fft_fixed_mul_q15(twid_imag, imag[j]);
+				int16_t base_imag = fft_fixed_mul_q15(twid_real, imag[j]) + fft_fixed_mul_q15(twid_imag, real[j]);
 				int16_t curr_real = real[i];
 				int16_t curr_imag = imag[i];
 				if (shift) {
@@ -102,7 +102,9 @@ int32_t fft_fixed_cfft(int16_t real[], int16_t imag[], int16_t log2_len, unsigne
 }
 
 // perform forward/inverse real FFT in-place
-int32_t fft_fixed_rfft(int16_t data[], int32_t log2_len, unsigned inverse) {
+int32_t fft_fixed_rfft(int16_t *data, int32_t log2_len, unsigned inverse) {
+	panic("fft_fixed_rfft: seems broken");
+	
 	int32_t i;
 	unsigned N = 1 << (log2_len - 1);
 	int32_t scale = 0;
