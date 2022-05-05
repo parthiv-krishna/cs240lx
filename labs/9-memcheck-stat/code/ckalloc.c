@@ -4,6 +4,10 @@
 #include "test-interface.h"
 #include "ckalloc.h"
 
+void ckalloc_start(void) {
+    panic("not meant to be used!");
+}
+
 // keep a list of allocated blocks.
 static hdr_t *alloc_list;
 static hdr_t *free_list;
@@ -197,4 +201,9 @@ int ck_heap_errors() {
     }
 
     return errors;
+}
+
+
+void ckalloc_end(void) {
+    panic("not meant to be used!");
 }
