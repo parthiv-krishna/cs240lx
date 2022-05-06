@@ -4,6 +4,7 @@
 #include "timer-interrupt.h"
 #include "ckalloc.h"
 
+#define TIMER_INT_NCYCLES 10000
 
 // you'll need to pull your code from lab 2 here so you
 // can fabricate jumps
@@ -30,7 +31,8 @@ static int in_range(uint32_t addr, uint32_t b, uint32_t e) {
 // if <pc> is in the range we want to check and not in the 
 // range we cannot check, return 1.
 int (ck_mem_checked_pc)(uint32_t pc) {
-    unimplemented();
+    return in_range(pc, start_check, end_check) && 
+          !in_range(pc, start_nocheck, end_nocheck);
 }
 
 // useful variables to track: how many times we did 
@@ -54,10 +56,13 @@ void ck_mem_interrupt(uint32_t pc) {
 
     // we don't know what the user was doing.
     dev_barrier();
-
-    unimplemented();
-
-
+    if (check_on) {
+        if (ck_mem_checked_pc(pc)) {
+            checked++;
+        } else {
+            skipped++;
+        }
+    }  
     // we don't know what the user was doing.
     dev_barrier();
 }
@@ -72,13 +77,16 @@ void ck_mem_init(void) {
     assert(in_range((uint32_t)ckfree, start_nocheck, end_nocheck));
     assert(!in_range((uint32_t)printk, start_nocheck, end_nocheck));
 
-    unimplemented();
+    timer_interrupt_init(TIMER_INT_NCYCLES);
+    skipped = 0;
+    checked = 0;
 }
 
 // only check pc addresses [start,end)
 void ck_mem_set_range(void *start, void *end) {
     assert(start < end);
-    unimplemented();
+    start_check = (uint32_t)start;
+    end_check = (uint32_t)end;
 }
 
 // maybe should always do the heap check at the begining
@@ -86,13 +94,13 @@ void ck_mem_on(void) {
     assert(init_p && !check_on);
     check_on = 1;
 
-    unimplemented();
+    // unimplemented();
 }
 
 // maybe should always do the heap check at the end.
 void ck_mem_off(void) {
     assert(init_p && check_on);
 
-    unimplemented();
+    // unimplemented();
     check_on = 0;
 }
