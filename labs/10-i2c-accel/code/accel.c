@@ -71,7 +71,7 @@ typedef struct {
 // returns the raw value from the sensor: combine
 // the low and the hi and sign extend (cast to short)
 static short mg_raw(uint8_t lo, uint8_t hi) {
-    unimplemented();
+    return (short)((hi << 8) | lo);
 }
 
 // returns milligauss, integer
@@ -135,11 +135,12 @@ accel_t mpu6500_accel_init(uint8_t addr, unsigned accel_g) {
     case accel_4g: g = 4; break;
     case accel_8g: g = 8; break;
     case accel_16g: g = 16; break;
-    default: panic("invalid g=%b\n", g);
+    default: panic("invalid g=%b\n", accel_g);
     }
 
     // set scaling to <accel_g> and 20hz sample rate
-    unimplemented();
+    imu_wr(addr, accel_config_reg, accel_g);
+    imu_wr(addr, accel_config_reg2, 4);
 
     output("accel_config_reg=%b\n", imu_rd(addr, accel_config_reg));
     output("accel_config_reg2=%b\n", imu_rd(addr, accel_config_reg2));
@@ -149,7 +150,7 @@ accel_t mpu6500_accel_init(uint8_t addr, unsigned accel_g) {
 // do a hard reset
 void mpu6500_reset(uint8_t addr) {
     // reset: p41
-    imu_wr(addr, PWR_MGMT_1, 0b10000001);
+    imu_wr(addr, PWR_MGMT_1, 0x1);
 
     // they don't give a delay; but it's typical you need one.
     delay_ms(100);
@@ -177,9 +178,13 @@ imu_xyz_t accel_rd(const accel_t *h) {
 
 
     // read in the x,y,z from the accel using imu_rd_n
-    int x = 0, y = 0, z = 0;
 
-    unimplemented();
+    uint8_t raw[6];
+    imu_rd_n(addr, ACCEL_XOUT_H, raw, 6);
+
+    short x = mg_raw(raw[0], raw[1]);
+    short y = mg_raw(raw[2], raw[3]);
+    short z = mg_raw(raw[4], raw[5]);
 
     return xyz_mk(x,y,z);
 }
