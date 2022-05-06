@@ -149,7 +149,7 @@ accel_t mpu6500_accel_init(uint8_t addr, unsigned accel_g) {
 // do a hard reset
 void mpu6500_reset(uint8_t addr) {
     // reset: p41
-    unimplemented();
+    imu_wr(addr, PWR_MGMT_1, 0b10000001);
 
     // they don't give a delay; but it's typical you need one.
     delay_ms(100);
