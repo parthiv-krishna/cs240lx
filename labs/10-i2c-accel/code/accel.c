@@ -200,7 +200,7 @@ void notmain(void) {
         WHO_AM_I_REG      = 0x75, 
         // this is default: but seems we can get 0x71 too
         WHO_AM_I_VAL1 = 0x70,       
-        WHO_AM_I_VAL2 = 0x71 
+        WHO_AM_I_VAL2 = 0x68  // seems to actually give this?
     };
 
     uint8_t v = imu_rd(dev_addr, WHO_AM_I_REG);
