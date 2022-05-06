@@ -132,7 +132,7 @@ static int dps_to_scale(unsigned dps) {
     }
 }
 
-static int mdps_scale_deg2(int deg, int dps) {
+static int dps_scale_deg2(int deg, int dps) {
     // hack to get around no div
     if(dps == 250) 
         return (deg * 250) / SHRT_MAX;
@@ -142,7 +142,7 @@ static int mdps_scale_deg2(int deg, int dps) {
         panic("bad dps=%d\n", dps);
 }
 
-static int mdps_scale_deg(int deg, int dps) {
+static int dps_scale_deg(int deg, int dps) {
     return (deg * dps_to_scale(dps)) /1000;
 }
 
@@ -154,7 +154,7 @@ static inline int within(int exp, int have, int tol) {
 }
 
 static void test_dps(int expected_i, uint8_t h, uint8_t l, int dps) {
-    int s_i = mdps_scale_deg(mg_raw(l, h), dps);
+    int s_i = dps_scale_deg(mg_raw(l, h), dps);
     expected_i *= 1000;
     int tol = 5;
     if(!within(expected_i, s_i, tol))
@@ -182,12 +182,12 @@ imu_xyz_t gyro_rd(const gyro_t *h) {
     return xyz_mk(x,y,z);
 }
 
-// milli dps: i don't think is correct?
+// dps
 imu_xyz_t gyro_scale(gyro_t *h, imu_xyz_t xyz) {
     int dps = h->dps;
-    int x = mdps_scale_deg2(xyz.x, dps);
-    int y = mdps_scale_deg2(xyz.y, dps);
-    int z = mdps_scale_deg2(xyz.z, dps);
+    int x = dps_scale_deg2(xyz.x, dps);
+    int y = dps_scale_deg2(xyz.y, dps);
+    int z = dps_scale_deg2(xyz.z, dps);
     return xyz_mk(x,y,z);
 }
 
@@ -251,7 +251,7 @@ void notmain(void) {
         imu_xyz_t xyz_raw = gyro_rd(&g);
         output("reading gyro %d\n", i);
         xyz_print("\traw", xyz_raw);
-        xyz_print("\tscaled (milli dps)", gyro_scale(&g, xyz_raw));
+        xyz_print("\tscaled (dps)", gyro_scale(&g, xyz_raw));
         delay_ms(1000);
     }
 }
