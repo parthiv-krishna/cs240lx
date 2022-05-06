@@ -152,6 +152,8 @@ void mpu6500_reset(uint8_t addr) {
     // reset: p41
     imu_wr(addr, PWR_MGMT_1, 0x1);
 
+    imu_wr(addr, PWR_MGMT_2, 0);
+
     // they don't give a delay; but it's typical you need one.
     delay_ms(100);
 }
@@ -182,9 +184,9 @@ imu_xyz_t accel_rd(const accel_t *h) {
     uint8_t raw[6];
     imu_rd_n(addr, ACCEL_XOUT_H, raw, 6);
 
-    short x = mg_raw(raw[0], raw[1]);
-    short y = mg_raw(raw[2], raw[3]);
-    short z = mg_raw(raw[4], raw[5]);
+    short x = mg_raw(raw[1], raw[0]);
+    short y = mg_raw(raw[3], raw[2]);
+    short z = mg_raw(raw[5], raw[4]);
 
     return xyz_mk(x,y,z);
 }
