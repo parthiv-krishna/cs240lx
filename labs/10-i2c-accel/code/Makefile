@@ -1,7 +1,10 @@
 # list out the driver program source 
 TEST_SRC = accel.c
+# TEST_SRC = gyro.c
+# TEST_SRC = accel_int.c
+TEST_SRC = accel_led.c
 
-# OPT_LEVEL = -O
+OPT_LEVEL = -O3
 
 # your source, shared by driver code.
 #   if you want to use our staff-hc-sr04.o,
