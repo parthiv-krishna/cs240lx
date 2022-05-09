@@ -52,25 +52,6 @@ unsigned ck_mem_stats(int clear_stats_p) {
     return c;
 }
 
-typedef enum {
-    MEM_OP_NONE = 0,
-    MEM_OP_SINGLE = 1,
-    MEM_OP_MULTIPLE = 2
-} mem_op_t;
-
-mem_op_t memory_op_type(uint32_t instr) {
-    if (((instr >> 26) & 0b11) == 0b01) {
-        // single transfer, bits 27:26 = 0b01
-        return MEM_OP_SINGLE;
-    }
-
-    if (((instr >> 25) & 0b111) == 0b100) {
-        // multiple transfer, bits 27:25 = 100
-        return MEM_OP_MULTIPLE;
-    }
-    return MEM_OP_NONE;
-}
-
 typedef struct {
     uint32_t offset:12, // bits 11:0
              Rd:4,      // bits 15:12
@@ -84,10 +65,14 @@ typedef struct {
              single_transfer_flag:2, // bits 27:26 (0b01)
              cond:4;    // bits 31:28
 } ldr_str_t;
+_Static_assert(sizeof(ldr_str_t) == sizeof(uint32_t));
 
-void validate_single_transfer(uint32_t instr, uint32_t *pc, uint32_t *regs) {
-    ldr_str_t op = *(ldr_str_t *)&instr;
-    assert(op.single_transfer_flag == 0b01);
+void validate_single_transfer(uint32_t *pc, uint32_t *regs) {
+    ldr_str_t op = *(ldr_str_t *)pc;
+    if (op.single_transfer_flag != 0b01) {
+        // not a single transfer
+        return;
+    }
 
     if (op.Rn == 15) {
         // pc-relative addressing. we don't check this.
@@ -109,6 +94,57 @@ void validate_single_transfer(uint32_t instr, uint32_t *pc, uint32_t *regs) {
     }
 }
 
+typedef struct {
+    uint32_t reg_list:16, // bits 15:0
+             Rn:4,        // bits 19:16
+             L:1,         // bit 20
+             W:1,         // bit 21
+             S:1,         // bit 22
+             U:1,         // bit 23
+             P:1,         // bit 24
+             multiple_transfer_flag:3, // bits 27:25 (0b100)
+             cond:4;     // bits 31:28
+} ldm_stm_t;
+
+_Static_assert(sizeof(ldm_stm_t) == sizeof(uint32_t));
+
+void validate_multiple_transfer(uint32_t *pc, uint32_t *regs) {
+    ldm_stm_t op = *(ldm_stm_t *)pc;
+    if (op.multiple_transfer_flag != 0b100) {
+        // not a multiple transfer
+        return;
+    }
+
+    if (op.Rn == 15) {
+        // pc-relative or sp-relative addressing. we don't check this.
+        return;
+    }
+
+    uint32_t *base = (uint32_t *) regs[op.Rn];
+    unsigned n_regs = 0;
+
+    // count regs
+    uint32_t reg_list = op.reg_list;
+    while (reg_list) {
+        n_regs += reg_list & 1;
+        reg_list >>= 1;
+    }
+
+    // if post-increment, need to consider one extra
+    uint32_t offset = op.P ?  n_regs - 1: n_regs;
+    // up or down?
+    uint32_t *last = op.U ? base + offset : base - offset;
+
+    const char *op_name = op.L ? "load from" : "store to";
+    if (!ck_ptr_is_alloced(base)) {
+        panic("invalid multiple %s base %x. pc=%x", op_name, base, pc);
+    }
+    if (!ck_ptr_is_alloced(last)) {
+        panic("invalid multiple %s last %x. pc=%x, base=%x", op_name, last, pc, base);
+    }
+
+}
+
 // note: lr = the pc that we were interrupted at.
 // longer term: pass in the entire register bank so we can figure
 // out more general questions.
@@ -116,18 +152,8 @@ void ck_mem_interrupt(uint32_t* pc, uint32_t *regs) {
     // we don't know what the user was doing.
 
     uint32_t instr = *pc;
-    mem_op_t type = memory_op_type(instr);
-    if (type == MEM_OP_NONE) {
-        return; // not a memory op
-    }
-    if (type == MEM_OP_SINGLE) {
-        // single transfer
-        validate_single_transfer(instr, pc, regs);
-    }
-    if (type == MEM_OP_MULTIPLE) {
-        
-    }
-
+    validate_single_transfer(pc, regs);
+    validate_multiple_transfer(pc, regs);
 }
 
 void interrupt_vector(unsigned pc) {
