@@ -71,20 +71,41 @@ mem_op_t memory_op_type(uint32_t instr) {
     return MEM_OP_NONE;
 }
 
+typedef struct {
+    uint32_t offset:12, // bits 11:0
+             Rd:4,      // bits 15:12
+             Rn:4,      // bits 19:16
+             L:1,       // bit 20
+             W:1,       // bit 21
+             B:1,       // bit 22
+             U:1,       // bit 23
+             P:1,       // bit 24
+             I:1,       // bit 25
+             single_transfer_flag:2, // bits 27:26 (0b01)
+             cond:4;    // bits 31:28
+} ldr_str_t;
+
 void validate_single_transfer(uint32_t instr, uint32_t *pc, uint32_t *regs) {
-    unsigned Rn = (instr >> 16) & 0b1111;
-    if (Rn == 15) {
-        // pc-relative addressing.  we don't check this.
+    ldr_str_t op = *(ldr_str_t *)&instr;
+    assert(op.single_transfer_flag == 0b01);
+
+    if (op.Rn == 15) {
+        // pc-relative addressing. we don't check this.
         return;
     }
 
-    uint32_t *base = (uint32_t *) regs[Rn];
+    uint32_t *base = (uint32_t *) regs[op.Rn];
 
-    uint32_t offset = 0;
-    uint32_t *access = base + offset;
+    // if bit set, then use register offset otherwise use immediate
+    uint32_t offset = op.I ? regs[op.offset & 0b1111] : op.offset;
 
-    if (!ck_ptr_is_alloced(base)) {
-        panic("invalid access to unallocated memory: pc=%x, base=%x, offset=%d\n", pc, base, offset);
+    // if bit set, add to base otherwise subtract
+    uint32_t *target = op.U ? base + offset : base - offset;
+
+    const char *op_name = op.L ? "load from" : "store to";
+
+    if (!ck_ptr_is_alloced(target)) {
+        panic("invalid %s %x. pc=%x, base=%x", op_name, target, pc, base);
     }
 }
 
