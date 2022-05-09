@@ -2,10 +2,16 @@
 # TEST_SRC = tests/part2-test1.c tests/part2-test2.c tests/part2-test3.c tests/part2-test4.c tests/part2-test5.c tests/part2-test6.c
 
 TEST_SRC = $(wildcard tests-2.0/*.c)
-
+TEST_SRC = $(wildcard tests-stat/*.c)
+TEST_SRC = tests-stat/part3-test1.c
 #   if you want to use our staff-hc-sr04.o,
 #   comment SRC out and uncomment STAFF_OBJS
-SUPPORT_OBJS := ckalloc.o ck-gc.o gc-asm.o kr-malloc.o
+SUPPORT_OBJS := ckalloc.o ck-gc.o gc-asm.o kr-malloc.o ck-memcheck.o
+
+# SRC=ck-gc.c ck-memcheck.c ckalloc.c kr-malloc.c pi-sbrk.c
+
+CFLAGS = -fno-toplevel-reorder
+
 
 # define this if you need to give the device for your pi
 TTYUSB = 
