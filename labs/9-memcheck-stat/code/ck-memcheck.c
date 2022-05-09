@@ -160,18 +160,14 @@ void interrupt_vector(unsigned pc) {
     uint32_t *regs;
     asm volatile("mov %0, r1" : "=r"(regs));
     dev_barrier();
-    // printk("abort\n");
-    // system_disable_interrupts();
 
     // confirm we are in timer interrupt
     unsigned pending = GET32(IRQ_basic_pending);
     if((pending & RPI_BASIC_ARM_TIMER_IRQ) == 0) {
         dev_barrier();
-        // system_enable_interrupts();
         return;
     }
 
-    // printk("%p %x %d\n", pc, *(uint32_t *)pc, memory_op_type(*(uint32_t *)pc));
 
     if (check_on) {
         if (!ck_mem_checked_pc(pc)) {
@@ -181,14 +177,11 @@ void interrupt_vector(unsigned pc) {
             checked++;
         }
     }
-    // printk("\n");
 
     // clear the interrupt
     PUT32(arm_timer_IRQClear, 1);
-    // system_enable_interrupts();
-    // we don't know what the user was doing.
 
-    // brkpt_mismatch_set(pc);
+    // we don't know what the user was doing.
     dev_barrier();
 }
 
@@ -223,20 +216,12 @@ void ck_mem_on(void) {
 
     timer_interrupt_init(TIMER_INT_NCYCLES);
     system_enable_interrupts();
-
-    // uint32_t pc;
-    // asm volatile("mov %0, r15" : "=r" (pc));
-    // brkpt_mismatch_set(pc);
-    // brkpt_mismatch_start();
-    // asm volatile("cps 16");
-    // system_enable_interrupts();
 }
 
 // maybe should always do the heap check at the end.
 void ck_mem_off(void) {
     assert(init_p && check_on);
     check_on = 0;
+    
     system_disable_interrupts();
-    // brkpt_mismatch_stop();
-
 }
