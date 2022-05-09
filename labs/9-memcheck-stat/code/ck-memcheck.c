@@ -7,6 +7,10 @@
 
 #define TIMER_INT_NCYCLES 0
 
+#define PART1 0
+#define PART2 0
+#define PART3 1
+
 // you'll need to pull your code from lab 2 here so you
 // can fabricate jumps
 // #include "armv6-insts.h"
@@ -150,8 +154,16 @@ void ck_mem_interrupt(uint32_t* pc, uint32_t *regs) {
     // we don't know what the user was doing.
 
     uint32_t instr = *pc;
+
+#ifdef PART1
     validate_single_transfer(pc, regs);
     validate_multiple_transfer(pc, regs);
+#endif // PART1
+
+#ifdef PART2
+
+#endif // PART2
+
 }
 
 void interrupt_vector(unsigned pc) {
@@ -212,8 +224,10 @@ void ck_mem_on(void) {
     assert(init_p && !check_on);
     check_on = 1;
 
+#if defined(PART1) || defined(PART2)
     timer_interrupt_init(TIMER_INT_NCYCLES);
     system_enable_interrupts();
+#endif // PART1 || PART2
 }
 
 // maybe should always do the heap check at the end.
@@ -221,5 +235,37 @@ void ck_mem_off(void) {
     assert(init_p && check_on);
     check_on = 0;
     
+#if defined(PART1) || defined(PART2)
     system_disable_interrupts();
+#endif // PART1 || PART2
+}
+
+
+
+// part 3
+int checking = 0;
+void asan_access(unsigned long addr, size_t sz, int write, int pc) {
+    if (checking || !check_on) {
+        return;
+    }
+    checking = 1;
+    extern char __code_start__, __code_end__;
+    if (in_range(addr, (uint32_t)&__code_start__, (uint32_t)&__code_end__)) {
+        if (write) {
+            panic("write to code %p, pc = %p, size = %d\n", addr, pc, sz);
+        } else {
+            return; // load from code is ok
+        }
+    }
+
+    extern char __data_start__, __data_end__;
+    if (in_range(addr, (uint32_t)&__data_start__, (uint32_t)&__data_end__)) { 
+        // data is ok
+        return;
+    }
+    
+    if (!ck_ptr_is_alloced((void*)addr) || !ck_ptr_is_alloced((void*)(addr+sz-1))) {
+        panic("invalid access %p, pc = %p, size = %d\n", addr, pc, sz);
+    }       
+    checking = 0;
 }
