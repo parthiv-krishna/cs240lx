@@ -3,10 +3,10 @@
 
 TEST_SRC = $(wildcard tests-2.0/*.c)
 TEST_SRC = $(wildcard tests-stat/*.c)
-TEST_SRC = tests-stat/part3-test1.c
+TEST_SRC = tests-stat/part3-test3.c
 #   if you want to use our staff-hc-sr04.o,
 #   comment SRC out and uncomment STAFF_OBJS
-SUPPORT_OBJS := ckalloc.o ck-gc.o gc-asm.o kr-malloc.o ck-memcheck.o
+SUPPORT_OBJS := ckalloc.o ck-gc.o gc-asm.o kr-malloc.o ck-memcheck.o interrupts-asm.o
 
 # SRC=ck-gc.c ck-memcheck.c ckalloc.c kr-malloc.c pi-sbrk.c
 
