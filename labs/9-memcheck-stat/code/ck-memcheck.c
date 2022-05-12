@@ -4,11 +4,12 @@
 #include "timer-interrupt.h"
 #include "ckalloc.h"
 #include "vector-base.h"
+#include "armv6-insts.h"
 
 #define TIMER_INT_NCYCLES 0
 
-#define PART1 0
-#define PART2 0
+// #define PART1 1
+// #define PART2 1
 #define PART3 1
 
 // you'll need to pull your code from lab 2 here so you
@@ -69,15 +70,36 @@ typedef struct {
 } ldr_str_t;
 _Static_assert(sizeof(ldr_str_t) == sizeof(uint32_t));
 
+typedef struct {
+    uint32_t setup;
+    uint32_t instrs[6];
+        // push regs
+        // bl checker
+        // pop regs
+        // load/store
+        // b to next instruction
+} rewrite_trampoline_t;
+rewrite_trampoline_t *trampoline_table;
+
+
+static inline unsigned get_trampoline_table_idx(uint32_t *pc) {
+    extern char __code_start__;
+    uint32_t code_start = (uint32_t)&__code_start__;
+    return ((uint32_t)pc - code_start) / sizeof(uint32_t);
+}
+
 void validate_single_transfer(uint32_t *pc, uint32_t *regs) {
     ldr_str_t op = *(ldr_str_t *)pc;
+#ifdef PART2
+    unsigned idx = get_trampoline_table_idx(pc);
+    if (trampoline_table[idx].setup) {
+        // we got here from trampoline. can't trust args
+        op = *(ldr_str_t *)&(trampoline_table[idx].instrs[4]);
+    }
+#endif // PART2
+
     if (op.single_transfer_flag != 0b01) {
         // not a single transfer
-        return;
-    }
-
-    if (op.Rn == 15) {
-        // pc-relative addressing. we don't check this.
         return;
     }
 
@@ -87,7 +109,24 @@ void validate_single_transfer(uint32_t *pc, uint32_t *regs) {
     uint32_t offset = op.I ? regs[op.offset & 0b1111] : op.offset;
 
     // if bit set, add to base otherwise subtract
+
+    for (int i = 0; i < 15; i++) {
+        printk("%d: %x\n", i, regs[i]);
+    }
     uint32_t *target = op.U ? base + offset : base - offset;
+    printk("%d base = %p offset = %p target = %p\n", op.Rn, base, offset, target);
+    if (op.Rn == 15) {
+        // pc-relative addressing.
+        if (!op.L) {
+            panic("illegal store to pc-relative address, pc=%x, target=%x", pc, target);
+        }
+        extern char __code_start__, __code_end__;
+        if (!in_range((uint32_t)target, (uint32_t)&__code_start__, (uint32_t)&__code_end__)) {
+            panic("load from pc-relative address outside of code, pc=%x, target=%x", pc, target);
+        }
+        // load within code, ok
+        return;
+    }
 
     const char *op_name = op.L ? "load from" : "store to";
 
@@ -117,11 +156,6 @@ void validate_multiple_transfer(uint32_t *pc, uint32_t *regs) {
         return;
     }
 
-    if (op.Rn == 15) {
-        // pc-relative or sp-relative addressing. we don't check this.
-        return;
-    }
-
     uint32_t *base = (uint32_t *) regs[op.Rn];
     unsigned n_regs = 0;
 
@@ -137,6 +171,19 @@ void validate_multiple_transfer(uint32_t *pc, uint32_t *regs) {
     // up or down?
     uint32_t *last = op.U ? base + offset : base - offset;
 
+    if (op.Rn == 15) {
+        // pc-relative addressing.
+        if (!op.L) {
+            panic("illegal multiple store to pc-relative address, pc=%x, base=%x, last=%x", pc, base, last);
+        }
+        extern char __code_start__, __code_end__;
+        if (!in_range((uint32_t)base, (uint32_t)&__code_start__, (uint32_t)&__code_end__) || !in_range((uint32_t)last, (uint32_t)&__code_start__, (uint32_t)&__code_end__)) {
+            panic("multiple load from pc-relative address outside of code, pc=%x, base=%x, last=%x", pc, base, last);
+        }
+        // load within code, ok
+        return;
+    }
+
     const char *op_name = op.L ? "load from" : "store to";
     if (!ck_ptr_is_alloced(base)) {
         panic("invalid multiple %s base %x. pc=%x", op_name, base, pc);
@@ -146,6 +193,81 @@ void validate_multiple_transfer(uint32_t *pc, uint32_t *regs) {
     }
 
 }
+
+void rewrite_single_transfer(uint32_t *pc, uint32_t *regs) {
+    ldr_str_t op = *(ldr_str_t *)pc;
+    if (op.single_transfer_flag != 0b01) {
+        // not a single transfer
+        return;
+    }
+
+    if (op.Rn == 15) {
+        // pc-relative addressing.
+        validate_single_transfer(pc, regs);
+    }
+
+    unsigned idx = get_trampoline_table_idx(pc);
+    rewrite_trampoline_t *trampoline = &trampoline_table[idx];
+    if (trampoline->setup) {
+        // already rewritten
+        return;
+    }
+
+    trampoline->setup = 1;
+    trampoline->instrs[0] = 0xe92d5fff; // push {r0-r12, r14}
+    trampoline->instrs[1] = 0xe1a0100d; // mov r1, sp
+    trampoline->instrs[2] = arm_bl((uint32_t)&trampoline->instrs[0], (uint32_t)validate_single_transfer);
+    trampoline->instrs[3] = 0xe8bd5fff; // pop {r0-r12, r14}
+    trampoline->instrs[4] = *pc;
+    trampoline->instrs[5] = arm_b((uint32_t)&trampoline->instrs[4], ((uint32_t)pc) + 4);
+
+    printk("trampoline at pc=%x\n", pc);
+    for (int i = 0; i < 5; i++) {
+        printk("%x\n", trampoline->instrs[i]);
+    }
+
+    validate_single_transfer(pc, regs);
+
+    *pc = arm_b((uint32_t)pc, (uint32_t)&trampoline->instrs[0]);
+}
+
+void rewrite_multiple_transfer(uint32_t *pc, uint32_t *regs) {
+    ldm_stm_t op = *(ldm_stm_t *)pc;
+    if (op.multiple_transfer_flag != 0b100) {
+        // not a single transfer
+        return;
+    }
+
+    if (op.Rn == 15) {
+        // pc-relative addressing.
+        validate_multiple_transfer(pc, regs);
+    }
+
+    unsigned idx = get_trampoline_table_idx(pc);
+    rewrite_trampoline_t *trampoline = &trampoline_table[idx];
+    if (trampoline->setup) {
+        // already rewritten
+        return;
+    }
+
+    trampoline->setup = 1;
+    trampoline->instrs[0] = 0xe92d5fff; // push {r0-r12, r14}
+    trampoline->instrs[1] = 0xe1a0100d; // mov r1, sp
+    trampoline->instrs[2] = arm_bl((uint32_t)&trampoline->instrs[0], (uint32_t)validate_single_transfer);
+    trampoline->instrs[3] = 0xe8bd5fff; // pop {r0-r12, r14}
+    trampoline->instrs[4] = *pc;
+    trampoline->instrs[5] = arm_b((uint32_t)&trampoline->instrs[4], ((uint32_t)pc) + 4);
+
+    printk("trampoline at pc=%x\n", pc);
+    for (int i = 0; i < 5; i++) {
+        printk("%x\n", trampoline->instrs[i]);
+    }
+
+    validate_multiple_transfer(pc, regs);
+
+    *pc = arm_b((uint32_t)pc, (uint32_t)&trampoline->instrs[0]);
+}
+
 
 // note: lr = the pc that we were interrupted at.
 // longer term: pass in the entire register bank so we can figure
@@ -161,7 +283,8 @@ void ck_mem_interrupt(uint32_t* pc, uint32_t *regs) {
 #endif // PART1
 
 #ifdef PART2
-
+    rewrite_single_transfer(pc, regs);
+    rewrite_multiple_transfer(pc, regs);
 #endif // PART2
 
 }
@@ -210,6 +333,20 @@ void ck_mem_init(void) {
 
     extern uint32_t _interrupt_table;
     vector_base_set(&_interrupt_table);
+
+
+#ifdef PART2
+    extern char __code_start__, __code_end__;
+    uint32_t nbytes = (uint32_t)&__code_end__ - (uint32_t)&__code_start__;
+    uint32_t ninstr = nbytes / sizeof(uint32_t);
+    trampoline_table = (rewrite_trampoline_t *)ckalloc(ninstr * sizeof(rewrite_trampoline_t));
+    for (int i = 0; i < ninstr; i++) {
+        trampoline_table[i].setup = 0;
+    }
+    printk("trampoline table at %x, %d\n", trampoline_table, ninstr * sizeof(rewrite_trampoline_t));
+
+#endif // PART2
+
 }
 
 // only check pc addresses [start,end)
