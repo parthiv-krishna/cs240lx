@@ -20,9 +20,7 @@ void *sbrk(long increment) {
     static int init_p;
 
     assert(increment > 0);
-    if(init_p) 
-        panic("not handling\n");
-    else {
+    if (!init_p) {
         unsigned onemb = 0x100000;
         heap_start = (void*)onemb;
         heap_end = (char*)heap_start + onemb;

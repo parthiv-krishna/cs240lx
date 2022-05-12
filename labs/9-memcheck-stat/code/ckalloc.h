@@ -201,4 +201,5 @@ void ckalloc_start(void);
 // put at end of ckalloc.c file
 void ckalloc_end(void);
 
+void asan_access(unsigned long addr, size_t sz, int write, int pc);
 #endif

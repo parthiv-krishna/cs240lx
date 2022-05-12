@@ -3,8 +3,14 @@
 #include "rpi-internal.h"
 #include "timer-interrupt.h"
 #include "ckalloc.h"
+#include "vector-base.h"
+#include "armv6-insts.h"
 
-#define TIMER_INT_NCYCLES 10000
+#define TIMER_INT_NCYCLES 0
+
+// #define PART1 1
+// #define PART2 1
+#define PART3 1
 
 // you'll need to pull your code from lab 2 here so you
 // can fabricate jumps
@@ -49,20 +55,265 @@ unsigned ck_mem_stats(int clear_stats_p) {
     return c;
 }
 
+typedef struct {
+    uint32_t offset:12, // bits 11:0
+             Rd:4,      // bits 15:12
+             Rn:4,      // bits 19:16
+             L:1,       // bit 20
+             W:1,       // bit 21
+             B:1,       // bit 22
+             U:1,       // bit 23
+             P:1,       // bit 24
+             I:1,       // bit 25
+             single_transfer_flag:2, // bits 27:26 (0b01)
+             cond:4;    // bits 31:28
+} ldr_str_t;
+_Static_assert(sizeof(ldr_str_t) == sizeof(uint32_t));
+
+typedef struct {
+    uint32_t setup;
+    uint32_t instrs[6];
+        // push regs
+        // bl checker
+        // pop regs
+        // load/store
+        // b to next instruction
+} rewrite_trampoline_t;
+rewrite_trampoline_t *trampoline_table;
+
+
+static inline unsigned get_trampoline_table_idx(uint32_t *pc) {
+    extern char __code_start__;
+    uint32_t code_start = (uint32_t)&__code_start__;
+    return ((uint32_t)pc - code_start) / sizeof(uint32_t);
+}
+
+void validate_single_transfer(uint32_t *pc, uint32_t *regs) {
+    ldr_str_t op = *(ldr_str_t *)pc;
+#ifdef PART2
+    unsigned idx = get_trampoline_table_idx(pc);
+    if (trampoline_table[idx].setup) {
+        // we got here from trampoline. can't trust args
+        op = *(ldr_str_t *)&(trampoline_table[idx].instrs[4]);
+    }
+#endif // PART2
+
+    if (op.single_transfer_flag != 0b01) {
+        // not a single transfer
+        return;
+    }
+
+    uint32_t *base = (uint32_t *) regs[op.Rn];
+
+    // if bit set, then use register offset otherwise use immediate
+    uint32_t offset = op.I ? regs[op.offset & 0b1111] : op.offset;
+
+    // if bit set, add to base otherwise subtract
+
+    for (int i = 0; i < 15; i++) {
+        printk("%d: %x\n", i, regs[i]);
+    }
+    uint32_t *target = op.U ? base + offset : base - offset;
+    printk("%d base = %p offset = %p target = %p\n", op.Rn, base, offset, target);
+    if (op.Rn == 15) {
+        // pc-relative addressing.
+        if (!op.L) {
+            panic("illegal store to pc-relative address, pc=%x, target=%x", pc, target);
+        }
+        extern char __code_start__, __code_end__;
+        if (!in_range((uint32_t)target, (uint32_t)&__code_start__, (uint32_t)&__code_end__)) {
+            panic("load from pc-relative address outside of code, pc=%x, target=%x", pc, target);
+        }
+        // load within code, ok
+        return;
+    }
+
+    const char *op_name = op.L ? "load from" : "store to";
+
+    if (!ck_ptr_is_alloced(target)) {
+        panic("invalid %s %x. pc=%x, base=%x", op_name, target, pc, base);
+    }
+}
+
+typedef struct {
+    uint32_t reg_list:16, // bits 15:0
+             Rn:4,        // bits 19:16
+             L:1,         // bit 20
+             W:1,         // bit 21
+             S:1,         // bit 22
+             U:1,         // bit 23
+             P:1,         // bit 24
+             multiple_transfer_flag:3, // bits 27:25 (0b100)
+             cond:4;     // bits 31:28
+} ldm_stm_t;
+
+_Static_assert(sizeof(ldm_stm_t) == sizeof(uint32_t));
+
+void validate_multiple_transfer(uint32_t *pc, uint32_t *regs) {
+    ldm_stm_t op = *(ldm_stm_t *)pc;
+    if (op.multiple_transfer_flag != 0b100) {
+        // not a multiple transfer
+        return;
+    }
+
+    uint32_t *base = (uint32_t *) regs[op.Rn];
+    unsigned n_regs = 0;
+
+    // count regs
+    uint32_t reg_list = op.reg_list;
+    while (reg_list) {
+        n_regs += reg_list & 1;
+        reg_list >>= 1;
+    }
+
+    // if post-increment, need to consider one extra
+    uint32_t offset = op.P ?  n_regs - 1: n_regs;
+    // up or down?
+    uint32_t *last = op.U ? base + offset : base - offset;
+
+    if (op.Rn == 15) {
+        // pc-relative addressing.
+        if (!op.L) {
+            panic("illegal multiple store to pc-relative address, pc=%x, base=%x, last=%x", pc, base, last);
+        }
+        extern char __code_start__, __code_end__;
+        if (!in_range((uint32_t)base, (uint32_t)&__code_start__, (uint32_t)&__code_end__) || !in_range((uint32_t)last, (uint32_t)&__code_start__, (uint32_t)&__code_end__)) {
+            panic("multiple load from pc-relative address outside of code, pc=%x, base=%x, last=%x", pc, base, last);
+        }
+        // load within code, ok
+        return;
+    }
+
+    const char *op_name = op.L ? "load from" : "store to";
+    if (!ck_ptr_is_alloced(base)) {
+        panic("invalid multiple %s base %x. pc=%x", op_name, base, pc);
+    }
+    if (!ck_ptr_is_alloced(last)) {
+        panic("invalid multiple %s last %x. pc=%x, base=%x", op_name, last, pc, base);
+    }
+
+}
+
+void rewrite_single_transfer(uint32_t *pc, uint32_t *regs) {
+    ldr_str_t op = *(ldr_str_t *)pc;
+    if (op.single_transfer_flag != 0b01) {
+        // not a single transfer
+        return;
+    }
+
+    if (op.Rn == 15) {
+        // pc-relative addressing.
+        validate_single_transfer(pc, regs);
+    }
+
+    unsigned idx = get_trampoline_table_idx(pc);
+    rewrite_trampoline_t *trampoline = &trampoline_table[idx];
+    if (trampoline->setup) {
+        // already rewritten
+        return;
+    }
+
+    trampoline->setup = 1;
+    trampoline->instrs[0] = 0xe92d5fff; // push {r0-r12, r14}
+    trampoline->instrs[1] = 0xe1a0100d; // mov r1, sp
+    trampoline->instrs[2] = arm_bl((uint32_t)&trampoline->instrs[0], (uint32_t)validate_single_transfer);
+    trampoline->instrs[3] = 0xe8bd5fff; // pop {r0-r12, r14}
+    trampoline->instrs[4] = *pc;
+    trampoline->instrs[5] = arm_b((uint32_t)&trampoline->instrs[4], ((uint32_t)pc) + 4);
+
+    printk("trampoline at pc=%x\n", pc);
+    for (int i = 0; i < 5; i++) {
+        printk("%x\n", trampoline->instrs[i]);
+    }
+
+    validate_single_transfer(pc, regs);
+
+    *pc = arm_b((uint32_t)pc, (uint32_t)&trampoline->instrs[0]);
+}
+
+void rewrite_multiple_transfer(uint32_t *pc, uint32_t *regs) {
+    ldm_stm_t op = *(ldm_stm_t *)pc;
+    if (op.multiple_transfer_flag != 0b100) {
+        // not a single transfer
+        return;
+    }
+
+    if (op.Rn == 15) {
+        // pc-relative addressing.
+        validate_multiple_transfer(pc, regs);
+    }
+
+    unsigned idx = get_trampoline_table_idx(pc);
+    rewrite_trampoline_t *trampoline = &trampoline_table[idx];
+    if (trampoline->setup) {
+        // already rewritten
+        return;
+    }
+
+    trampoline->setup = 1;
+    trampoline->instrs[0] = 0xe92d5fff; // push {r0-r12, r14}
+    trampoline->instrs[1] = 0xe1a0100d; // mov r1, sp
+    trampoline->instrs[2] = arm_bl((uint32_t)&trampoline->instrs[0], (uint32_t)validate_single_transfer);
+    trampoline->instrs[3] = 0xe8bd5fff; // pop {r0-r12, r14}
+    trampoline->instrs[4] = *pc;
+    trampoline->instrs[5] = arm_b((uint32_t)&trampoline->instrs[4], ((uint32_t)pc) + 4);
+
+    printk("trampoline at pc=%x\n", pc);
+    for (int i = 0; i < 5; i++) {
+        printk("%x\n", trampoline->instrs[i]);
+    }
+
+    validate_multiple_transfer(pc, regs);
+
+    *pc = arm_b((uint32_t)pc, (uint32_t)&trampoline->instrs[0]);
+}
+
+
 // note: lr = the pc that we were interrupted at.
 // longer term: pass in the entire register bank so we can figure
 // out more general questions.
-void ck_mem_interrupt(uint32_t pc) {
-
+void ck_mem_interrupt(uint32_t* pc, uint32_t *regs) {
     // we don't know what the user was doing.
+
+    uint32_t instr = *pc;
+
+#ifdef PART1
+    validate_single_transfer(pc, regs);
+    validate_multiple_transfer(pc, regs);
+#endif // PART1
+
+#ifdef PART2
+    rewrite_single_transfer(pc, regs);
+    rewrite_multiple_transfer(pc, regs);
+#endif // PART2
+
+}
+
+void interrupt_vector(unsigned pc) {
+    uint32_t *regs;
+    asm volatile("mov %0, r1" : "=r"(regs));
     dev_barrier();
+
+    // confirm we are in timer interrupt
+    unsigned pending = GET32(IRQ_basic_pending);
+    if((pending & RPI_BASIC_ARM_TIMER_IRQ) == 0) {
+        dev_barrier();
+        return;
+    }
+
+
     if (check_on) {
-        if (ck_mem_checked_pc(pc)) {
-            checked++;
-        } else {
+        if (!ck_mem_checked_pc(pc)) {
             skipped++;
+        } else {
+            ck_mem_interrupt((uint32_t*)pc, regs);
+            checked++;
         }
-    }  
+    }
+
+    // clear the interrupt
+    PUT32(arm_timer_IRQClear, 1);
+
     // we don't know what the user was doing.
     dev_barrier();
 }
@@ -77,9 +328,25 @@ void ck_mem_init(void) {
     assert(in_range((uint32_t)ckfree, start_nocheck, end_nocheck));
     assert(!in_range((uint32_t)printk, start_nocheck, end_nocheck));
 
-    timer_interrupt_init(TIMER_INT_NCYCLES);
     skipped = 0;
     checked = 0;
+
+    extern uint32_t _interrupt_table;
+    vector_base_set(&_interrupt_table);
+
+
+#ifdef PART2
+    extern char __code_start__, __code_end__;
+    uint32_t nbytes = (uint32_t)&__code_end__ - (uint32_t)&__code_start__;
+    uint32_t ninstr = nbytes / sizeof(uint32_t);
+    trampoline_table = (rewrite_trampoline_t *)ckalloc(ninstr * sizeof(rewrite_trampoline_t));
+    for (int i = 0; i < ninstr; i++) {
+        trampoline_table[i].setup = 0;
+    }
+    printk("trampoline table at %x, %d\n", trampoline_table, ninstr * sizeof(rewrite_trampoline_t));
+
+#endif // PART2
+
 }
 
 // only check pc addresses [start,end)
@@ -94,13 +361,48 @@ void ck_mem_on(void) {
     assert(init_p && !check_on);
     check_on = 1;
 
-    // unimplemented();
+#if defined(PART1) || defined(PART2)
+    timer_interrupt_init(TIMER_INT_NCYCLES);
+    system_enable_interrupts();
+#endif // PART1 || PART2
 }
 
 // maybe should always do the heap check at the end.
 void ck_mem_off(void) {
     assert(init_p && check_on);
-
-    // unimplemented();
     check_on = 0;
+    
+#if defined(PART1) || defined(PART2)
+    system_disable_interrupts();
+#endif // PART1 || PART2
+}
+
+
+
+// part 3
+int checking = 0;
+void asan_access(unsigned long addr, size_t sz, int write, int pc) {
+    if (checking || !check_on) {
+        return;
+    }
+    checking = 1;
+    extern char __code_start__, __code_end__;
+    if (in_range(addr, (uint32_t)&__code_start__, (uint32_t)&__code_end__)) {
+        if (write) {
+            panic("write to code %p, pc = %p, size = %d\n", addr, pc, sz);
+        } else {
+            return; // load from code is ok
+        }
+    }
+
+    extern char __data_start__, __data_end__;
+    if (in_range(addr, (uint32_t)&__data_start__, (uint32_t)&__data_end__)) { 
+        // data is ok
+        return;
+    }
+    
+    if (!ck_ptr_is_alloced((void*)addr) || !ck_ptr_is_alloced((void*)(addr+sz-1))) {
+        panic("invalid access %p, pc = %p, size = %d\n", addr, pc, sz);
+    }       
+    checking = 0;
 }
