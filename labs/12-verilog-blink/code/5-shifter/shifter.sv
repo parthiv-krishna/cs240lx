@@ -2,6 +2,7 @@ module shifter
     (
         input logic [31:0] in,
         input logic [4:0] shift,
+        input logic right,
         output logic [31:0] out
     );
 
@@ -12,12 +13,13 @@ module shifter
     assign intermediate[0] = in;
     assign out = intermediate[5];
 
-
     generate
         genvar i;
         for (i = 0; i <= 4; i = i + 1) begin
+            logic [31:0] left_shift = {intermediate[i][(31 - (2 ** i)):0], zero[(2 ** i) - 1:0]};
+            logic [31:0] right_shift = {zero[(2 ** i) - 1:0], intermediate[i][31:(2 ** i)]};
             mux32 mux(
-                .a({intermediate[i][(31 - (2 ** i)):0], zero[(2 ** i) - 1:0]}),
+                .a(right ? right_shift : left_shift),
                 .b({intermediate[i]}),
                 .sel(shift[i]),
                 .out({intermediate[i + 1]})
