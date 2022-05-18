@@ -2,10 +2,10 @@ ROOT=$(CS240LX_2022_PATH)/fpga
 BOARD ?= upduino
 BOARDROOT=$(ROOT)/$(BOARD)
 
-SRC=adder.sv
-TOP=adder
+SRC=empty.sv
+TOP=empty
 SIM=sim.cc
-SIM_TOP=adder
+SIM_TOP=empty
 
 include $(BOARDROOT)/rules.mk
 include $(ROOT)/verilator.mk
