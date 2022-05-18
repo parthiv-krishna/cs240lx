@@ -6,42 +6,24 @@ module shifter
     );
 
     /* verilator lint_off UNOPTFLAT */ 
-    wire [31:0] intermediate[3:0];
+    wire [31:0] intermediate[5:0];
+    wire [31:0] zero = 32'd0;
 
-    mux32 m1(
-        .a({in[30:0], 1'b0}),
-        .b(in),
-        .sel(shift[0]),
-        .out(intermediate[0])
-    );
+    assign intermediate[0] = in;
+    assign out = intermediate[5];
 
-    mux32 m2(
-        .a({intermediate[0][29:0], 2'b0}),
-        .b(intermediate[0]),
-        .sel(shift[1]),
-        .out(intermediate[1])
-    );
 
-    mux32 m4(
-        .a({intermediate[1][27:0], 4'b0}),
-        .b(intermediate[1]),
-        .sel(shift[2]),
-        .out(intermediate[2])
-    );
-
-    mux32 m8(
-        .a({intermediate[2][23:0], 8'b0}),
-        .b(intermediate[2]),
-        .sel(shift[3]),
-        .out(intermediate[3])
-    );
-
-    mux32 m16(
-        .a({intermediate[3][15:0], 16'b0}),
-        .b(intermediate[3]),
-        .sel(shift[4]),
-        .out(out)
-    );
+    generate
+        genvar i;
+        for (i = 0; i <= 4; i = i + 1) begin
+            mux32 mux(
+                .a({intermediate[i][(31 - (2 ** i)):0], zero[(2 ** i) - 1:0]}),
+                .b({intermediate[i]}),
+                .sel(shift[i]),
+                .out({intermediate[i + 1]})
+            );
+        end
+    endgenerate
 
 endmodule
 
