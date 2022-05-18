@@ -5,39 +5,40 @@ module shifter
         output logic [31:0] out
     );
 
-    wire [31:0] shift1, shift2, shift4, shift8;
+    /* verilator lint_off UNOPTFLAT */ 
+    wire [31:0] intermediate[3:0];
 
     mux32 m1(
         .a({in[30:0], 1'b0}),
         .b(in),
         .sel(shift[0]),
-        .out(shift1)
+        .out(intermediate[0])
     );
 
     mux32 m2(
-        .a({shift1[29:0], 2'b0}),
-        .b(shift1),
+        .a({intermediate[0][29:0], 2'b0}),
+        .b(intermediate[0]),
         .sel(shift[1]),
-        .out(shift2)
+        .out(intermediate[1])
     );
 
     mux32 m4(
-        .a({shift2[27:0], 4'b0}),
-        .b(shift2),
+        .a({intermediate[1][27:0], 4'b0}),
+        .b(intermediate[1]),
         .sel(shift[2]),
-        .out(shift4)
+        .out(intermediate[2])
     );
 
     mux32 m8(
-        .a({shift4[23:0], 8'b0}),
-        .b(shift4),
+        .a({intermediate[2][23:0], 8'b0}),
+        .b(intermediate[2]),
         .sel(shift[3]),
-        .out(shift8)
+        .out(intermediate[3])
     );
 
     mux32 m16(
-        .a({shift8[15:0], 16'b0}),
-        .b(shift8),
+        .a({intermediate[3][15:0], 16'b0}),
+        .b(intermediate[3]),
         .sel(shift[4]),
         .out(out)
     );
