@@ -1,3 +1,7 @@
+`define BAUD 19200
+`define OVERSAMPLE 16
+`define CLK_MHZ 48
+
 module uart_top
     (
         input logic clk,
@@ -15,6 +19,7 @@ module uart_top
 
     // baud rate of 19200 oversampled 16x on our CLK_MHZ clock:
     // TODO: localparam div = ...;
+    localparam div = (`CLK_MHZ * 1_000_000) / (`BAUD * `OVERSAMPLE);
 
     counter #(.M(div)) baud_generator (
         .clk, .rst(rst),
