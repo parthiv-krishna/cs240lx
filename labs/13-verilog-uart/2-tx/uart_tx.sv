@@ -69,7 +69,7 @@ module uart_tx
     always_comb begin
         case (state_curr)
             `STATE_IDLE: begin
-                state_next = tx_start ? `STATE_IDLE : `STATE_START;
+                state_next = tx_start ? `STATE_START : `STATE_IDLE;
             end
 
             `STATE_START: begin
