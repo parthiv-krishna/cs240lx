@@ -84,5 +84,7 @@ module uart_rx
 
         endcase
     end
+
+    assign rx_done_tick = (state_curr == `STATE_STOP) && do_sample;
     
 endmodule
