@@ -5,7 +5,9 @@ BOARDROOT=$(ROOT)/$(BOARD)
 SRC=$(wildcard *.sv)
 TOP=uart_top
 SIM=sim.cc
+SIM_SRC=$(SRC)
 SIM_TOP=uart_top
+VFLAGS += -DCLK_MHZ=48 --public
 
 include $(BOARDROOT)/rules.mk
 include $(ROOT)/verilator.mk
