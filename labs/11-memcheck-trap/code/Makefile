@@ -1,10 +1,10 @@
 TEST_SRC =
-TEST_SRC += tests/00-test.c
-TEST_SRC += tests/01-test.c
-TEST_SRC += tests/02-test.c
-TEST_SRC += tests/03-test.c
-TEST_SRC += tests/04-test.c
-TEST_SRC += tests/05-test.c
+# TEST_SRC += tests/00-test.c
+# TEST_SRC += tests/01-test.c
+# TEST_SRC += tests/02-test.c
+# TEST_SRC += tests/03-test.c
+# TEST_SRC += tests/04-test.c
+# TEST_SRC += tests/05-test.c
 
 TEST_SRC += tests/1-purify-bug.c
 TEST_SRC += tests/2-purify-bug.c
@@ -13,7 +13,7 @@ TEST_SRC += tests/4-purify-bug.c
 
 TEST_SRC += tests/5-purify-no-bug.c
 TEST_SRC += tests/6-purify-no-bug-slow.c
-TEST_SRC += tests/7-purify-no-bug.c
+# TEST_SRC += tests/7-purify-no-bug.c
 
 SUPPORT_OBJS = memtrace.o
 SUPPORT_OBJS  += checker-purify.o 

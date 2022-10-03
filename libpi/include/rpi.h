@@ -137,7 +137,8 @@ void kmalloc_init(void);
 // bounds checking.
 void *kmalloc_heap_ptr(void);
 // pointer to initial start of heap
-void *kmalloc_heap_start(void);
+void *
+kmalloc_heap_start(void);
 // pointer to end of heap
 void *kmalloc_heap_end(void);
 
