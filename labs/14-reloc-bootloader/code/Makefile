@@ -6,8 +6,8 @@ CFLAGS_EXTRA  = -fno-toplevel-reorder
 
 
 # swap these if you want to use your cpyjmp.c
-# SRC := cpyjmp.c
-STAFF_OBJS := staff-cpyjmp.o
+SRC := cpyjmp.c
+# STAFF_OBJS := staff-cpyjmp.o
 
 # define this if you need to give the device for your pi
 TTYUSB = 
