@@ -238,3 +238,9 @@ void eraser_init(void) {
 
     memtrace_on();
 }
+
+void *eraser_alloc(int nbytes) {
+    void *result = kmalloc(nbytes);
+    eraser_mark_alloc(result, nbytes);
+    return result;
+}

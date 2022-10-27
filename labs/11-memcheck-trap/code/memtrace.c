@@ -102,7 +102,7 @@ data_abort_memtrace(uint32_t *regs, uint32_t spsr, uint32_t pc) {
     assert(regs[MCHK_CPSR_OFF] == spsr);
         
     assert(spsr == spsr_get());
-    assert(mode_get(spsr) == SUPER_MODE);
+    assert(mode_get(spsr) == SUPER_MODE);   
 
     nfaults++;
     mode_get_sp_lr(regs);

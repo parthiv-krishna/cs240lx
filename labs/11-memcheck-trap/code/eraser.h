@@ -37,4 +37,6 @@ void eraser_unlock(void *l);
 // indicate that we are running thread <tid>
 void eraser_set_thread_id(int tid);
 
+void *eraser_alloc(int nbytes);
+
 #endif
