@@ -13,7 +13,9 @@ public:
     }
 
     void write(Args...)(Args args) {
-        // TODO
+        foreach (arg; args) {
+            writeElem(arg);
+        }
     }
 
     void flush() {
@@ -25,23 +27,34 @@ private:
     void function(ubyte) putc;
 
     void writeElem(string s) {
-        // TODO
+        foreach (char ch; s) {
+            putc(ch);
+        }
     }
 
     void writeElem(T)(T* val) {
-        // TODO
+        char[64] buf = void;
+        string s = itoa(cast(int)val, buf, 16);
+        writeElem("0x");
+        writeElem(s);
     }
 
     void writeElem(char ch) {
-        // TODO
+        putc(ch);
     }
 
     void writeElem(bool b) {
-        // TODO
+        if (b) {
+            writeElem("true");
+        } else {
+            writeElem("false");
+        }
     }
 
     void writeElem(S)(S value, uint base = 10) if (isInt!S) {
-        // TODO
+        char[64] buf = void;
+        string s = itoa(cast(int)value, buf, 10);
+        writeElem(s);
     }
 }
 
