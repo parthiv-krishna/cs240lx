@@ -71,12 +71,12 @@ struct Allocator(A) {
     }
 
     T* make(T, Args...)(Args args) {
-        // TODO
-        return null;
+        void *result = allocator.allocPtr(T.size);
+        return cast(T*)result;
     }
 
     void free(T)(T* val) {
-        // TODO
+        allocator.freePtr(val);
     }
 
     T[] makeArray(T, Args...)(size_t nelem, Args args) {

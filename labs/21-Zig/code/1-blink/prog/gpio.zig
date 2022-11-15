@@ -1,5 +1,5 @@
-extern fn GET32() i32;
-extern fn PUT32(val: u32) void;
+extern fn GET32(addr: *volatile u32) u32;
+extern fn PUT32(addr: *volatile u32, val: u32) void;
 // see broadcomm documents for magic addresses.
 const GPIO_BASE = @intToPtr(*volatile u32, 0x20200000);
 const GPIO_BASE_INT = @ptrToInt(GPIO_BASE);
@@ -49,11 +49,28 @@ const Gpio = struct {
     // member functions here
     // pub fn 
     fn set_function(comptime pin: Pin, func: GpioFunc) void {
-    
+        pin.func = func;
+        
+        var off: u32 = (pin.num % 10) * 3;
+        var g: *volatile u32 = GPIO_BASE + (pin.num / 10);
+        var v: u32 = GET32(g);
+        v &= (~0b111 << off);
+        v |= @enumToInt(func) < off;
+        PUT32(g, v);
     }
 
     pub fn set_output(comptime pin: Pin) GpioError!void {
+        set_function(pin, GpioFunc.GPIO_FUNC_OUTPUT);
+    }
 
+    pub fn gpio_set_on(comptime pin: Pin) GpioError!void {
+        var v: u32 = 1 << pin.num;
+        PUT32(gpio_set0, v);
+    }
+    
+    pub fn gpio_set_off(comptime pin: Pin) GpioError!void {
+        var v: u32 = 1 << pin.num;
+        PUT32(gpio_clr0, v);
     }
 };
 
@@ -62,5 +79,5 @@ const Gpio = struct {
 // regular static function decl
 // pub fn 
 pub fn gpio_set_function(comptime pin: Pin, func: GpioFunc) void {
-    
+    Gpio.set_function(pin, func);
 }

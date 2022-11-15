@@ -24,9 +24,22 @@ enum FuncType {
 }
 
 enum base = 0x200000;
+enum set  = 0x20001C;
+enum clr  = 0x200028;
+enum lev  = 0x200034;
 
 void set_func(uint pin, FuncType fn) {
-    // TODO
+    if (pin >= 32) {
+        return;
+    }
+    
+    uint off = (pin % 10) * 3;
+    uint* g = cast(uint *)(device.base + base) + (pin / 10);
+
+    uint v = mmio.ld(g);
+    v &= ~(0b111 << off);
+    v |= fn << off;
+    mmio.st(cast(uint*)g, v);
 }
 
 void set_output(uint pin) {
@@ -38,14 +51,23 @@ void set_input(uint pin) {
 }
 
 void set_on(uint pin) {
-    // TODO
+    if (pin >= 32) {
+        return;
+    }
+    mmio.st(cast(uint *)(device.base + set), 1 << pin);
 }
 
 void set_off(uint pin) {
-    // TODO
+    if (pin >= 32) {
+        return;
+    }
+    mmio.st(cast(uint *)(device.base + clr), 1 << pin);
 }
 
 bool read(uint pin) {
-    // TODO
-    return false;
+    if (pin >= 32) {
+        return false;
+    }
+    uint lev = mmio.ld(cast(uint *)(device.base + lev));
+    return ((lev >> pin) & 1) == 1;
 }
