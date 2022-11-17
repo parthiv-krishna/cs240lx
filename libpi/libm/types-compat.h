@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <limits.h>
 
-typedef uint8_t               u_int8_t;
+typedef uint8_t               uint8_t;
 typedef uint16_t              u_int16_t;
 typedef uint32_t              u_int32_t;
 typedef uint64_t              u_int64_t;

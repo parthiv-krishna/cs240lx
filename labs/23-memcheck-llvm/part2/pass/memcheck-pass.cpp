@@ -84,29 +84,39 @@ struct SkeletonPass : public ModulePass {
           // Instrument Loads
           if (LoadInst* load = dyn_cast<LoadInst>(&I)) {
             // TODO: Get the address where the load occurs.
-
+            Value* pointer = load->getPointerOperand();
+            
+            IRBuilder<> builder(load);
             // TODO: Cast the address to a uint8 ptr, as expected by log_load.
-
+            Value* pointer_int8 = builder.CreateBitCast(pointer, Type::getInt8PtrTy(context));
             // TODO: Insert call to log_load.
-           
+            builder.CreateCall(loadFunc, {pointer_int8}, "");
           }
 
           // Instrument Stores
           if (StoreInst* store = dyn_cast<StoreInst>(&I)) {
             // TODO: Get the address where the store occurs.
-
+            Value* pointer = store->getPointerOperand();
+            
+            IRBuilder<> builder(store);
             // TODO: Cast the address to a uint8 ptr, as expected by log_store.
-
+            Value* pointer_int8 = builder.CreateBitCast(pointer, Type::getInt8PtrTy(context));
             // TODO: Insert call to log_store.
+            builder.CreateCall(storeFunc, {pointer_int8}, "");
           }
 
           // Keep track of stack addresses to eliminate false positives.
           if (AllocaInst* stack = dyn_cast<AllocaInst>(&I)) {
             // TODO: Get the address where the stack gets allocated.
+            // Value* pointer = stack->getPointerOperand();
 
+            // IRBuilder<> builder(stack);
             // TODO: Cast the address to a uint8 ptr, as expected by log_stack.
+            // Value* pointer_int8 = builder.CreateBitCast(pointer, Type::getInt8PtrTy(context));
 
             // TODO: Insert call to log_store.
+            // builder.CreateCall(stackFunc  , {pointer_int8}, "");
+
           }
           last = &I;
         }

@@ -11,12 +11,12 @@ mem_log_t* head;
     printf(args);             \
   } while (0)
 
-static bool log_contains_addr(mem_log_t* log, u_int8_t* addr) {
+static bool log_contains_addr(mem_log_t* log, uint8_t* addr) {
   return log->addr <= addr &&
          ((u_int64_t)log->addr + log->size) > (u_int64_t)addr;
 }
 
-void log_malloc(u_int8_t* p, size_t bytes) {
+void log_malloc(uint8_t* p, size_t bytes) {
   mem_log_t* cur = head;
   // Malloc may be reusing a previously allocated block
   // that has been freed.
@@ -36,7 +36,7 @@ void log_malloc(u_int8_t* p, size_t bytes) {
   insert_log(&head, cur);
 }
 
-void log_free(u_int8_t* p) {
+void log_free(uint8_t* p) {
   mem_log_t* cur = head;
   while (cur != NULL) {
     if (log_contains_addr(cur, p)) {
@@ -53,7 +53,7 @@ void log_free(u_int8_t* p) {
   exit(0);
 }
 
-void log_load(u_int8_t* p) {
+void log_load(uint8_t* p) {
   mem_log_t* cur = head;
   while (cur != NULL) {
     if (log_contains_addr(cur, p)) {
@@ -70,7 +70,7 @@ void log_load(u_int8_t* p) {
   exit(0);
 }
 
-void log_store(u_int8_t* p) {
+void log_store(uint8_t* p) {
   mem_log_t* cur = head;
   while (cur != NULL) {
     if (log_contains_addr(cur, p)) {
@@ -87,7 +87,7 @@ void log_store(u_int8_t* p) {
   exit(0);
 }
 
-void log_stack(u_int8_t* p) {
+void log_stack(uint8_t* p) {
   mem_log_t* cur = (mem_log_t*)malloc(sizeof(mem_log_t));
   cur->addr = p;
   cur->size = 1;
