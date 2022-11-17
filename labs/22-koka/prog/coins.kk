@@ -3,7 +3,7 @@ effect ctl yield(v: int) : ()
 
 // part a/b
 fun num-coins(coins: list<int>, target)
-  ()
+  
 
 // part c
 fun least-coins(coins, tgt)
@@ -20,6 +20,11 @@ fun main()
   print-coin-counts([1, 2, 3, 4, 5], 5)
   with handler
     ctl assert(v)
-      () // add your assert handler here
+      if value then {
+        println("assertion success")
+        resume(())
+      } else {
+        println("assertion failure")
+      };
   assert(least-coins([1, 2, 3, 4, 5], 1) == 1)
   assert(least-coins([1, 2, 3, 4, 5], 6) == 2)

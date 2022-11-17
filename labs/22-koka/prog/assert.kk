@@ -2,7 +2,14 @@ effect ctl assert(value: bool) : ()
 
 fun main() : console ()
   //----------------your code here--------------------
-
+  with handler
+    ctl assert(value: bool)
+      if value then {
+        println("assertion success")
+        resume(())
+      } else {
+        println("assertion failure")
+      };
 
   //----------------end your code--------------------
   assert(3 == 3)
