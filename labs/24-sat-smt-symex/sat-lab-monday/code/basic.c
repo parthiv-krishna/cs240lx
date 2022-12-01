@@ -3,6 +3,8 @@
 #include <string.h>
 #include <assert.h>
 
+#define DEBUG 0
+
 #define append_field(OBJ, FIELD) (*({ \
     (OBJ).FIELD = realloc((OBJ).FIELD, (++((OBJ).n_##FIELD)) * sizeof((OBJ).FIELD[0])); \
     (OBJ).FIELD + ((OBJ).n_##FIELD - 1); \
@@ -110,7 +112,16 @@ int set_literal(int literal, enum decision_type type) {
     DECISION_STACK[N_DECISION_STACK++].type = type;
 
     // Update clause counters, check if any is completely false
-    assert(!"Implement me!");
+    int ret = 1;
+    struct clause_list *touching = clauses_touching(-literal); // literal is true --> -literal is false
+    for (int i = 0; i < touching->n_clauses; i++) {
+        struct clause *c = touching->clauses[i];
+        c->n_zeros++;
+        if (c->n_zeros == c->n_literals) {
+            ret = 0;
+        }
+    }
+    return ret;
 }
 
 // Undo the latest assignment on the decision stack. Then update all the
@@ -126,7 +137,11 @@ void unset_latest_assignment() {
 
     // Iterate over the clauses containing -literal and decrement their
     // n_zeros since this literal is no longer set.
-    assert(!"Implement me!");
+    struct clause_list *touching = clauses_touching(-literal); // literal is true --> -literal is false
+    for (int i = 0; i < touching->n_clauses; i++) {
+        struct clause *c = touching->clauses[i];
+        c->n_zeros--;
+    }
 }
 
 /****** DP METHODS ******/
@@ -140,7 +155,14 @@ int decide() {
     // Iterate over variables until we find an unassigned one, placing it in v
     // (or return 0 if none is found).
     int v;
-    assert(!"Implement me!");
+    for (v = 1; v < N_VARS; v++) {
+        if (ASSIGNMENT[v] == UNASSIGNED) {
+            break;
+        }
+    }
+    if (v == N_VARS) {
+        return 0;
+    }
 
     // Otherwise, try setting it false. Note this should never cause a
     // conflict, otherwise it should have been BCP'd.
@@ -171,7 +193,22 @@ int bcp() {
         // - Otherwise, if we find a literal that is unset, try to set it. If
         //   setting it causes a conflict, return 0. Otherwise, record that
         //   there was a change and go on to the next clause.
-        assert(!"Implement me!");
+        for (int j = 0; j < clause->n_literals; j++) {
+            int lit = clause->literals[j];
+            if (is_literal_true(lit)) {
+                break; // sat
+            } else if (ASSIGNMENT[abs(lit)] == UNASSIGNED) {
+                if (DEBUG) xprintf("Implied %d", lit);
+                if (!set_literal(lit, IMPLIED)) {
+                    if (DEBUG) xprintf(" conflict\n");
+                    return 0; // conflict
+                } 
+                if (DEBUG) xprintf(" ok\n");
+                any_change = 1; // no conflict, keep going
+                break;
+            }
+        
+        }
     }
 
     return any_change ? bcp() : 1;
@@ -189,7 +226,14 @@ int resolveConflict() {
     // find a decision that is only TRIED_ONE_WAY.
     // If you have unwinded the entire decision stack, return 0 (the formula is
     // unsat!)
-    assert(!"Implement me!");
+    while (DECISION_STACK[N_DECISION_STACK - 1].type != TRIED_ONE_WAY) {
+        if (DEBUG) xprintf("%d has been tried both ways\n", DECISION_STACK[N_DECISION_STACK - 1].var);
+        unset_latest_assignment();
+        if (N_DECISION_STACK == 0) {
+           return 0; // unsat
+        }
+    }
+    if (DEBUG) xprintf("%d has NOT been tried both ways, flipping\n", DECISION_STACK[N_DECISION_STACK - 1].var);    
 
     // Otherwise, take that decision and flip it:
     unsigned var = DECISION_STACK[N_DECISION_STACK - 1].var;
@@ -233,7 +277,8 @@ int main(int argc, char **argv) {
 
             // Append to the list of clauses touching this literal. Hint: use
             // clauses_touching and append!
-            assert(!"Implement me");
+            struct clause_list *touching = clauses_touching(literal);
+            append_field(*touching, clauses) = &CLAUSES[i];
         }
     }
 
