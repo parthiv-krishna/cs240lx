@@ -1,10 +1,10 @@
 LLVM_BIN=/usr/opt/clang+llvm-15.0.2-x86_64-unknown-linux-gnu/bin
 RTLIB=rtlib
 # TEST_SRC=test-use-after-free
-TEST_SRC=test-no-error
+# TEST_SRC=test-no-error
 # TEST_SRC=test-unsafe-store
 # TEST_SRC=test-unsafe-load
-# TEST_SRC=test-mem-leak
+TEST_SRC=test-mem-leak
 BUILD_DIR=./objs
 
 all: run

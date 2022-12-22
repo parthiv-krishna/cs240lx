@@ -108,14 +108,13 @@ struct SkeletonPass : public ModulePass {
           // Keep track of stack addresses to eliminate false positives.
           if (AllocaInst* stack = dyn_cast<AllocaInst>(&I)) {
             // TODO: Get the address where the stack gets allocated.
-            // Value* pointer = stack->getPointerOperand();
-
-            // IRBuilder<> builder(stack);
+            IRBuilder<> builder(&I);
+            builder.SetInsertPoint(I.getNextNode());
             // TODO: Cast the address to a uint8 ptr, as expected by log_stack.
-            // Value* pointer_int8 = builder.CreateBitCast(pointer, Type::getInt8PtrTy(context));
+            Value* pointer_int8 = builder.CreateBitCast(stack, Type::getInt8PtrTy(context));
 
             // TODO: Insert call to log_store.
-            // builder.CreateCall(stackFunc  , {pointer_int8}, "");
+            builder.CreateCall(stackFunc, {pointer_int8}, "");
 
           }
           last = &I;
