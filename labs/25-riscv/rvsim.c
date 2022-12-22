@@ -26,14 +26,45 @@ static bool do_branch(machine_t* m, int32_t pc, bool cond) {
 
 // Returns the result of applying 'op' to 'a' and 'b'.
 static int32_t alu_compute(int32_t a, int32_t b, alu_op_t op) {
-    assert(!"unimplemented");
+    switch (op) {
+        case ALU_ADD:
+            return a + b;
+        case ALU_SUB:
+            return a - b;
+        case ALU_SLT:
+            return (a < b) ? 1 : 0;
+        case ALU_SLTU:
+            return ((uint32_t)a < (uint32_t)b) ? 1 : 0;
+        case ALU_XOR:
+            return a ^ b;
+        case ALU_SLL:
+            return a << b;
+        case ALU_SRL:
+            return (uint32_t)a >> bits_get(b, 4, 0);
+        case ALU_SRA:
+            return a >> bits_get(b, 4, 0);
+        case ALU_OR:
+            return a | b;
+        case ALU_AND:
+            return a & b;
+        default:
+            assert(!"unknown alu op");
+    }
 }
 
 // Extracts the immediate from 'insn', assuming the immediate is encoded in the
 // instruction with the corresponding type.
 static uint32_t extract_imm(uint32_t insn, imm_type_t type) {
     // Implement the immediate decoder for each type of immediate encoding.
-    assert(!"unimplemented");
+    switch (type) {
+        case IMM_U:
+            return bits_remap(insn, 31, 12, 31, 12);
+        case IMM_I:
+            return sext(bits_remap(insn, 31, 20, 11, 0), 12);
+        default:
+            assert(!"unimplemented");
+    }
+    return 0;
 }
 
 #define RD(x) bits_get(x, 11, 7)
@@ -47,7 +78,12 @@ static uint32_t extract_imm(uint32_t insn, imm_type_t type) {
 static void rarith(machine_t* m, uint32_t insn) {
     // Decode the ALU operation, rs1, rs2, and rd from the instruction. Then
     // run alu_compute and write the result back to the register file.
-    assert(!"unimplemented");
+    alu_op_t op = FUNCT7(insn) << 3 | FUNCT3(insn);
+    uint32_t rd = RD(insn);
+    uint32_t rs1 = RS1(insn);
+    uint32_t rs2 = RS2(insn);
+    int32_t result = alu_compute(m->regs[rs1], m->regs[rs2], op);
+    m->regs[rd] = result;
 }
 
 // Executes an I-type arithmetic instruction.
@@ -56,7 +92,15 @@ static void iarith(machine_t* m, uint32_t insn) {
     // and write the result back to the register file.
     // NOTE: for shift instructions, the immediate is encoded in the SHAMT
     // field (this matters for SRL).
-    assert(!"unimplemented");
+    alu_op_t op = FUNCT3(insn);
+    uint32_t rd = RD(insn);
+    uint32_t rs1 = RS1(insn);
+    uint32_t imm = extract_imm(insn, IMM_I);
+    if (bit_is_on(insn, 30) && op == ALU_SRA) {
+        imm = SHAMT(insn);
+    }
+    int32_t result = alu_compute(m->regs[rs1], imm, op);
+    m->regs[rd] = result;
 }
 
 // Executes a branch instruction. Returns true if a jump occurred.
@@ -81,12 +125,16 @@ static bool branch(machine_t* m, uint32_t insn) {
 
 static void lui(machine_t* m, uint32_t insn) {
     // Load the U-type immediate into rd.
-    assert(!"unimplemented");
+    uint32_t imm = extract_imm(insn, IMM_U);
+    uint32_t rd = RD(insn);
+    m->regs[rd] = imm;
 }
 
 static void auipc(machine_t* m, uint32_t insn) {
     // Decode the U-type immediate, add it to the PC, and write it into rd.
-    assert(!"unimplemented");
+    uint32_t imm = extract_imm(insn, IMM_U);
+    uint32_t rd = RD(insn);
+    m->regs[rd] = m->pc + imm;
 }
 
 // Example instruction: jal
@@ -174,7 +222,23 @@ bool machine_exec(machine_t* m) {
     }
 
     // Decode the opcode, and dispatch to the appropriate helper function.
-    assert(!"unimplemented");
+    uint32_t opcode = bits_get(insn, 6, 0);
+    switch (opcode) {
+        case OP_LUI:
+            lui(m, insn);
+            break;
+        case OP_AUIPC:
+            auipc(m, insn);
+            break;
+        case OP_RARITH:
+            rarith(m, insn);
+            break;
+        case OP_IARITH:
+            iarith(m, insn);
+            break;
+        default:
+            assert(!"unknown opcode");
+    }
 
     if (!jmp) {
         // if we didn't jump, increment pc to the next instruction.
