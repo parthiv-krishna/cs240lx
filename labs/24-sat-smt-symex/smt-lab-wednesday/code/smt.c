@@ -76,25 +76,56 @@ int new_bv(int width) {
     // Create a fresh bitvector of the given width. Note here you need to
     // append to the BVS vector as well as initialize all its bits to fresh SAT
     // variables.
-    assert(!"Implement me!");
+    struct bv b;
+    memset(&b, 0, sizeof(struct bv));
+    for (int i = 0; i < width; i++) {
+        APPEND_FIELD(b, bits) = NEXT_SAT_VAR++;
+    }
+    APPEND_GLOBAL(BVS) = b;
+    return N_BVS - 1;
 }
 
 int const_bv(int64_t value, int width) {
     // Like new_bv, except also add clauses asserting its bits are the same as
     // those of @value. Please do little-endian; bits[0] should be value & 1.
-    assert(!"Implement me!");
+    int bv_idx = new_bv(width);
+    struct bv b = BVS[bv_idx];
+    for (int i = 0; i < b.n_bits; i++) {
+        if ((value >> i) & 1) {
+            clause(b.bits[i]);
+        } else {
+            clause(-b.bits[i]);
+        }
+    }
 }
 
 int bv_eq(int bv_1, int bv_2) {
     int width = BVS[bv_1].n_bits;
     assert(width == BVS[bv_2].n_bits);
+    int final_clause_arr[width + 2];
 
     // This one is a doozy: add a fresh SAT variable and enough SAT clauses to
     // assert that this variable is true iff all the bits of bv_1 and bv_2 are
     // equal. I suggest using as many of intermediate/temp SAT variables as you
     // need; generally, BCP does a great job at handling those so they're more
     // or less "free" (at least, for our purposes rn!).
-    assert(!"Implement me!");
+    int sat_final = NEXT_SAT_VAR++;
+    for (int i = 0; i < width; i++) {
+        int sat_1 = BVS[bv_1].bits[i];
+        int sat_2 = BVS[bv_2].bits[i];
+        int sat_intermediate = NEXT_SAT_VAR++;
+        clause(sat_1, sat_2, sat_intermediate); // (~1 and ~2) -> intermediate
+        clause(-sat_1, -sat_2, sat_intermediate); // (1 and 2) -> intermediate
+        clause(-sat_intermediate, -sat_1, sat_2); // intermediate -> (~1 and 2)
+        clause(-sat_intermediate, sat_1, -sat_2); // intermediate -> (1 and ~2)
+        clause(-sat_final, sat_intermediate); // final->intermediate
+
+        final_clause_arr[i] = -sat_intermediate;
+    }
+    final_clause_arr[width] = sat_final; // (i1 and i2 and ... iN) -> final
+    final_clause_arr[width + 1] = 0; // terminate
+    clause_arr(final_clause_arr);
+    return sat_final;
 }
 
 int bv_add(int bv_1, int bv_2) {
@@ -106,7 +137,18 @@ int bv_add(int bv_1, int bv_2) {
     // This one is similarly big; basically you want to do a ripple-carry
     // adder to assign the bits of @out based on the bits of @bv_1, @bv_2. I
     // would recommend just trying to encode it as a truth table.
-    assert(!"Implement me!");
+    int carry[width];
+    for (int i = 0; i < width; i++) {
+        carry[i] = NEXT_SAT_VAR++;
+    }
+    
+    clause(-carry[0]);
+    for (int i = 0; i < width; i++) {
+        // 
+
+
+    }
+    return out;
 }
 
 static void array_axioms(struct array array, int compare_up_to,
@@ -155,6 +197,10 @@ int solve() {
     sprintf(constraint_path, "temp_files/constraints.%d.dimacs", getpid());
 
     FILE *fout = fopen(constraint_path, "w");
+    if (!fout) {
+        fprintf(stderr, "Cannot create file %s\n", constraint_path);
+        exit(1);
+    }
 
     int zero = NEXT_SAT_VAR++;
     clause(-zero);
@@ -177,7 +223,14 @@ int solve() {
     fprintf(fout, "p cnf %d %d\n", NEXT_SAT_VAR - 1, N_CLAUSES);
 
     // Iterate through the clauses and print them in DIMACS format.
-    assert(!"Implement me!");
+    for (int i = 0; i < N_CLAUSES; i++) {
+        struct clause c = CLAUSES[i];
+        for (int j = 0; j < c.n_literals; j++) {
+            int lit = c.literals[j];
+            fprintf(fout, "%d ", lit);
+        }
+        fprintf(fout, "0\n");
+    }
 
     fclose(fout);
 
@@ -215,5 +268,13 @@ int64_t get_solution(int bv, int as_signed) {
     assert(SAT_SOLUTION);
 
     // Read the bits for @bv from SAT_SOLUTION into an int64_t.
-    assert(!"Implement me!");
+    int64_t result;
+    struct bv b = BVS[bv];
+    assert(bv < N_BVS);
+    assert(b.n_bits < 64);
+    for (int i = 0; i < b.n_bits; i++) {
+        int sat_variable = b.bits[i];
+        result |= (SAT_SOLUTION[sat_variable] << i);
+    }
+    return result;
 }
